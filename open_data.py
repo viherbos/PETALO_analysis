@@ -181,7 +181,7 @@ if __name__=="__main__":
     parser.add_argument("-t", "--translate", action="store_true",
                         help="Translate binary coincidence file to HDF5")
     parser.add_argument('hdf', metavar='N', nargs=1, help='HDF5 file')
-    parser.add_argument('ldat', metavar='N', nargs=1, help='Coincidence ldat file')
+    parser.add_argument('ldat', metavar='N', nargs='?', help='Coincidence ldat file')
 
     args = parser.parse_args()
 
