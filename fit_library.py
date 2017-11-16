@@ -13,7 +13,7 @@ class fitting(object):
         self.bins  = bins
         self.data  = data
         self.fit_func = fit_func
-        # Histogram to start working
+        # Histogram 
         self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins)
         self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
 
@@ -27,8 +27,8 @@ class fitting(object):
         self.hist_fit = self.fit_func(self.bin_centers, *self.coeff)
         #Gets fitted function and residues
 
-    def evaluate(self,in_data):
-        return self.fit_func(in_data,*self.coeff)
+    # def evaluate(self,in_data):
+    #     return self.fit_func(in_data,*self.coeff)
 
 
 
