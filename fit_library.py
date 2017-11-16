@@ -17,6 +17,7 @@ class fitting(object):
         self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins)
         self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
 
+        # Fitting function call
         self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bin_centers,
                                                 self.hist, p0=self.guess)
 
