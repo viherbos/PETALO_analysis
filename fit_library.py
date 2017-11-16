@@ -31,7 +31,7 @@ class fitting(object):
     def evaluate(self,in_data):
         return self.fit_func(in_data,*self.coeff)
 
-
+# This is the end
 
 class gauss_fit(fitting):
     def __call__(self, data, bins):
