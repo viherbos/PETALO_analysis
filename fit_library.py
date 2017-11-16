@@ -13,7 +13,7 @@ class fitting(object):
         self.bins  = bins
         self.data  = data
         self.fit_func = fit_func
-        # Histogram 
+        # Histogram
         self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins)
         self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
 
@@ -31,6 +31,7 @@ class fitting(object):
     # def evaluate(self,in_data):
     #     return self.fit_func(in_data,*self.coeff)
 
+    # Eyeee
 
 
 class gauss_fit(fitting):
