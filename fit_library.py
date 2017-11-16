@@ -28,11 +28,10 @@ class fitting(object):
         self.hist_fit = self.fit_func(self.bin_centers, *self.coeff)
         #Gets fitted function and residues
 
-    # def evaluate(self,in_data):
-    #     return self.fit_func(in_data,*self.coeff)
+    def evaluate(self,in_data):
+        return self.fit_func(in_data,*self.coeff)
 
-    # Eyeee
-
+# This is the end
 
 class gauss_fit(fitting):
     def __call__(self, data, bins):
