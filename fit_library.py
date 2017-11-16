@@ -21,15 +21,16 @@ class fitting(object):
         try:
             self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bin_centers,
                                                     self.hist, p0=self.guess)
-
             self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
             # Error in parameter estimation
-
-
-            self.hist_fit = self.fit_func(self.bin_centers, *self.coeff)
-            #Gets fitted function and residues
         except:
             print "Fitting Problems"
+            self.coeff = self.guess
+            self.perr  = 0*self.guess
+
+
+        self.hist_fit = self.fit_func(self.bin_centers, *self.coeff)
+        #Gets fitted function and residues
 
     def evaluate(self,in_data):
         return self.fit_func(in_data,*self.coeff)
