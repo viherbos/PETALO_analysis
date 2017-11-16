@@ -25,8 +25,8 @@ class fitting(object):
             # Error in parameter estimation
         except:
             print "Fitting Problems"
-            self.coeff = self.guess
-            self.perr  = 0*self.guess
+            self.coeff = np.array(self.guess)
+            self.perr  = np.array(self.guess)
 
 
         self.hist_fit = self.fit_func(self.bin_centers, *self.coeff)
