@@ -205,7 +205,7 @@ if __name__=="__main__":
     ts2 = np.array(DATA.loc[:,'timestamp2'])
 
     fig=plt.figure(figsize=(12,4))
-    ##fig.canvas.set_window_title()
+    fig.canvas.set_window_title(hdf_filename)
     gs = gridspec.GridSpec( nrows=4, ncols=4,
                             width_ratios=[2, 2, 2, 1])
     ax0 = fig.add_subplot(gs[:, 0])
