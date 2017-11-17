@@ -196,14 +196,16 @@ if __name__=="__main__":
     Q2_fit = ft.gauss_fit()
     td_fit = ft.gauss_fit()
 
-    DATA = read_hdf(".",''.join(args.hdf))
+    hdf_filename = ''.join(args.hdf)
+    DATA = read_hdf(".",hdf_filename)
     # parer output is a char array so a join operation is required
     Q1  = np.array(DATA.loc[:,'Q1'])
     Q2  = np.array(DATA.loc[:,'Q2'])
     ts1 = np.array(DATA.loc[:,'timestamp1'])
     ts2 = np.array(DATA.loc[:,'timestamp2'])
 
-    fig=plt.figure(figsize=(12,4))
+    fig=plt.figure(figsize=(12,4), hdf_filename)
+    fig.canvas.set_window_title()
     gs = gridspec.GridSpec( nrows=4, ncols=4,
                             width_ratios=[2, 2, 2, 1])
     ax0 = fig.add_subplot(gs[:, 0])
