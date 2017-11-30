@@ -46,7 +46,6 @@ class gauss_fit(fitting):
                                        bins=bins,
                                        guess=self.p0,
                                        fit_func=self.gauss1)
-        return self.coeff,self.perr
 
     def plot(self,axis,title,xlabel,ylabel,res=True):
         axis.hist(self.data, self.bins, facecolor='green')
