@@ -12,15 +12,17 @@ import argparse
 
 def raw_singles_to_hdf5(ldat_dir  = ".",
                         ldat_name = "my_data_singles.ldat",
-                        hdf5_name = "my_data_singles.hdf"):
+                        hdf5_name = "my_data_singles.hdf",
+                        env_name  = "env.txt"):
 
     struct_event  = 'qfi' # long-long / float / int
     # Raw struct
     struct_len    = struct.calcsize(struct_event)
 
     os.chdir(ldat_dir)
-    i=0
+    i=0;j=0
     data_array=[]
+    env_array=[]
 
     with open(ldat_name, "rb") as f:
         while True:
@@ -31,19 +33,30 @@ def raw_singles_to_hdf5(ldat_dir  = ".",
             data_array.append(s)
         print ("Number of Events %d" % i)
 
+    with open(env_name, "rb") as f:
+        while True:
+            data = f.readline()
+            if not data: break
+            j=j+1
+            env_array.append(float(data))
+        print ("Number of TEMP SENSORS %d" % j)
 
     with pd.HDFStore( hdf5_name,
                       complevel=9, complib='bzip2') as store:
         panel_array = pd.DataFrame( data=data_array,
                                     columns=['timestamp', 'Q', 'id'])
+        env_array = pd.DataFrame( data=env_array,
+                                  columns=['temp'])
         store.put('data',panel_array)
+        store.put('env',env_array)
         store.close()
 
 
 
 def coincidence_to_hdf5(ldat_dir  = ".",
                         ldat_name = "my_data_coincidence.ldat",
-                        hdf5_name = "my_data_coincidence.hdf"):
+                        hdf5_name = "my_data_coincidence.hdf",
+                        env_name  = "env.txt"):
 
     struct_event  = 'HHqfiHHqfi'
     # Coincidence struct
@@ -52,6 +65,7 @@ def coincidence_to_hdf5(ldat_dir  = ".",
     os.chdir(ldat_dir)
     i=0
     data_array=[]
+    env_array=[]
 
     with open(ldat_name, "rb") as f:
         while True:
@@ -62,6 +76,13 @@ def coincidence_to_hdf5(ldat_dir  = ".",
             data_array.append(s)
         print ("Number of Events %d" % i)
 
+    with open(env_name, "rb") as f:
+        while True:
+            data = f.readline()
+            if not data: break
+            j=j+1
+            env_array.append(float(data))
+        print ("Number of TEMP SENSORS %d" % j)
 
     with pd.HDFStore( hdf5_name,
                       complevel=9, complib='bzip2') as store:
@@ -76,7 +97,11 @@ def coincidence_to_hdf5(ldat_dir  = ".",
                                              'timestamp2',
                                              'Q2',
                                              'id2'])
+        env_array = pd.DataFrame( data=env_array,
+                                  columns=['temp'])
+
         store.put('data',panel_array)
+        store.put('env',env_array)
         store.close()
 
 
@@ -84,8 +109,9 @@ def read_hdf(ldat_dir  = ".",
              hdf5_name = "my_data.hdf"):
 
     os.chdir(ldat_dir)
-    data = pd.read_hdf(hdf5_name)
-    return data
+    data = pd.read_hdf(hdf5_name,key='data')
+    env = pd.read_hdf(hdf5_name,key='env')
+    return data,env
 
 
 class gui_aux(object):
@@ -182,6 +208,7 @@ if __name__=="__main__":
                         help="Translate binary coincidence file to HDF5")
     parser.add_argument('hdf', metavar='N', nargs=1, help='HDF5 file')
     parser.add_argument('ldat', metavar='N', nargs='?', help='Coincidence ldat file')
+    parser.add_argument('env' , metavar='N', nargs='?', help='Temperatures files')
 
     args = parser.parse_args()
 
@@ -190,19 +217,21 @@ if __name__=="__main__":
         print ("LDAT file = " + ''.join(args.ldat))
         coincidence_to_hdf5(   ldat_dir  = ".",
                                ldat_name = ''.join(args.ldat),
-                               hdf5_name = ''.join(args.hdf))
+                               hdf5_name = ''.join(args.hdf),
+                               env_name  = ''.join(args.env))
 
     Q1_fit = ft.gauss_fit()
     Q2_fit = ft.gauss_fit()
     td_fit = ft.gauss_fit()
 
     hdf_filename = ''.join(args.hdf)
-    DATA = read_hdf(".",hdf_filename)
+    DATA,TEMP = read_hdf(".",hdf_filename)
     # parer output is a char array so a join operation is required
     Q1  = np.array(DATA.loc[:,'Q1'])
     Q2  = np.array(DATA.loc[:,'Q2'])
     ts1 = np.array(DATA.loc[:,'timestamp1'])
     ts2 = np.array(DATA.loc[:,'timestamp2'])
+    temp = np.array(TEMP.loc[:,'temp'])
 
     fig=plt.figure(figsize=(12,4))
     fig.canvas.set_window_title(hdf_filename)
