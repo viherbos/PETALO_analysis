@@ -63,7 +63,7 @@ def coincidence_to_hdf5(ldat_dir  = ".",
     struct_len    = struct.calcsize(struct_event)
 
     os.chdir(ldat_dir)
-    i=0
+    i=0; j=0
     data_array=[]
     env_array=[]
 
@@ -79,7 +79,8 @@ def coincidence_to_hdf5(ldat_dir  = ".",
     with open(env_name, "rb") as f:
         while True:
             data = f.readline()
-            if not data: break
+            print data
+            if data=="": break
             j=j+1
             env_array.append(float(data))
         print ("Number of TEMP SENSORS %d" % j)
@@ -234,7 +235,8 @@ if __name__=="__main__":
     temp = np.array(TEMP.loc[:,'temp'])
 
     fig=plt.figure(figsize=(12,4))
-    fig.canvas.set_window_title(hdf_filename)
+    fig.canvas.set_window_title(hdf_filename + " - Temp: " + \
+                                str(np.mean(temp))+ u'\xb0')
     gs = gridspec.GridSpec( nrows=4, ncols=4,
                             width_ratios=[2, 2, 2, 1])
     ax0 = fig.add_subplot(gs[:, 0])
