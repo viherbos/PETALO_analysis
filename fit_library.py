@@ -50,46 +50,47 @@ class gauss_fit(fitting):
                                        guess=self.p0,
                                        fit_func=self.gauss1)
 
-    def plot(self,axis,title,xlabel,ylabel,res=True):
+    def plot(self,axis,title,xlabel,ylabel,res=True,fit=True):
         axis.hist(self.data, self.bins, facecolor='green')
-        axis.plot(self.bin_centers, self.hist_fit, 'r--', linewidth=1)
         axis.set_xlabel(xlabel)
         axis.set_ylabel(ylabel)
         axis.set_title(title)
-        if (res==True):
-            axis.text(0.05,0.9, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
-                                 '$\sigma$=%0.1f (+/- %0.1f) \n \n'+
-                                 'FWHM=%0.1f (+/- %0.1f) \n'+\
-                                 'Res=%0.1f%% (+/- %0.1f)') % \
-                                    (self.coeff[1] , self.perr[1],
-                                     np.absolute(self.coeff[2]) , self.perr[2],
-                                     2.35*np.absolute(self.coeff[2]),
-                                     2.35*np.absolute(self.perr[2]),
-                                     2.35*np.absolute(self.coeff[2])*100/self.coeff[1],
-                                     2.35*np.absolute(self.coeff[2])*100/self.coeff[1]*
-                                     np.sqrt((self.perr[2]/self.coeff[2])**2+
-                                             (self.perr[1]/self.coeff[1])**2)
-                                    )
-                                  ),
-                                     fontsize=6,
-                                     verticalalignment='top',
-                                     horizontalalignment='left',
-                                     transform=axis.transAxes)
+        if (fit==True):
+            axis.plot(self.bin_centers, self.hist_fit, 'r--', linewidth=1)
+            if (res==True):
+                axis.text(0.05,0.9, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
+                                     '$\sigma$=%0.1f (+/- %0.1f) \n \n'+
+                                     'FWHM=%0.1f (+/- %0.1f) \n'+\
+                                     'Res=%0.1f%% (+/- %0.1f)') % \
+                                        (self.coeff[1] , self.perr[1],
+                                         np.absolute(self.coeff[2]) , self.perr[2],
+                                         2.35*np.absolute(self.coeff[2]),
+                                         2.35*np.absolute(self.perr[2]),
+                                         2.35*np.absolute(self.coeff[2])*100/self.coeff[1],
+                                         2.35*np.absolute(self.coeff[2])*100/self.coeff[1]*
+                                         np.sqrt((self.perr[2]/self.coeff[2])**2+
+                                                 (self.perr[1]/self.coeff[1])**2)
+                                        )
+                                      ),
+                                         fontsize=6,
+                                         verticalalignment='top',
+                                         horizontalalignment='left',
+                                         transform=axis.transAxes)
 
 
-        else:
-            # No resolution calculation
-            axis.text(0.05,0.9, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
-                                 '$\sigma$=%0.1f (+/- %0.1f) \n \n'+
-                                 'FWHM=%0.1f (+/- %0.1f)') % \
-                                    (self.coeff[1], self.perr[1],
-                                     np.absolute(self.coeff[2]), self.perr[2],
-                                     2.35*np.absolute(self.coeff[2]),
-                                     2.35*np.absolute(self.perr[2]))),
-                                     fontsize=6,
-                                     verticalalignment='top',
-                                     horizontalalignment='left',
-                                     transform=axis.transAxes)
+            else:
+                # No resolution calculation
+                axis.text(0.05,0.9, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
+                                     '$\sigma$=%0.1f (+/- %0.1f) \n \n'+
+                                     'FWHM=%0.1f (+/- %0.1f)') % \
+                                        (self.coeff[1], self.perr[1],
+                                         np.absolute(self.coeff[2]), self.perr[2],
+                                         2.35*np.absolute(self.coeff[2]),
+                                         2.35*np.absolute(self.perr[2]))),
+                                         fontsize=6,
+                                         verticalalignment='top',
+                                         horizontalalignment='left',
+                                         transform=axis.transAxes)
 
 class gauss_fit2(fitting):
     def __call__(self, data, mu_guess, bins):
