@@ -58,8 +58,8 @@ class gauss_fit(fitting):
         if (fit==True):
             axis.plot(self.bin_centers, self.hist_fit, 'r--', linewidth=1)
             if (res==True):
-                axis.text(0.05,0.9, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
-                                     '$\sigma$=%0.1f (+/- %0.1f) \n \n'+
+                axis.text(0.95,0.95, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
+                                     '$\sigma$=%0.1f (+/- %0.1f) \n'+
                                      'FWHM=%0.1f (+/- %0.1f) \n'+\
                                      'Res=%0.1f%% (+/- %0.1f)') % \
                                         (self.coeff[1] , self.perr[1],
@@ -74,14 +74,14 @@ class gauss_fit(fitting):
                                       ),
                                          fontsize=6,
                                          verticalalignment='top',
-                                         horizontalalignment='left',
+                                         horizontalalignment='right',
                                          transform=axis.transAxes)
 
 
             else:
                 # No resolution calculation
-                axis.text(0.05,0.9, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
-                                     '$\sigma$=%0.1f (+/- %0.1f) \n \n'+
+                axis.text(0.95,0.95, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
+                                     '$\sigma$=%0.1f (+/- %0.1f) \n'+
                                      'FWHM=%0.1f (+/- %0.1f)') % \
                                         (self.coeff[1], self.perr[1],
                                          np.absolute(self.coeff[2]), self.perr[2],
@@ -89,7 +89,7 @@ class gauss_fit(fitting):
                                          2.35*np.absolute(self.perr[2]))),
                                          fontsize=6,
                                          verticalalignment='top',
-                                         horizontalalignment='left',
+                                         horizontalalignment='right',
                                          transform=axis.transAxes)
 
 class gauss_fit2(fitting):
