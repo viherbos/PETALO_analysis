@@ -10,6 +10,7 @@ def gauss2(x, *param):
     return param[0] * np.exp(-(x-param[1])**2/(2.*param[2]**2)) + \
            param[3] * np.exp(-(x-param[4])**2/(2.*param[5]**2))
 
+
 class fitting(object):
     def __call__(self, data, bins, fit_func, guess):
         self.guess = guess
@@ -19,6 +20,7 @@ class fitting(object):
         # Histogram
         self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins)
         self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
+
 
         # Fitting function call
         try:
