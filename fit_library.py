@@ -20,7 +20,8 @@ class fitting(object):
         # Histogram
         self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins)
         self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
-
+        print self.bin_centers
+        print self.bin_edges
 
         # Fitting function call
         try:
@@ -53,7 +54,7 @@ class gauss_fit(fitting):
                                        fit_func=self.gauss1)
 
     def plot(self,axis,title,xlabel,ylabel,res=True,fit=True):
-        axis.hist(self.data, self.bins, facecolor='green')
+        axis.hist(self.data, self.bins, align='left', facecolor='green')
         axis.set_xlabel(xlabel)
         axis.set_ylabel(ylabel)
         axis.set_title(title)

@@ -22,6 +22,21 @@ def gaussn(x, n, *param):
         aux = aux + gauss(x,*param_i)
     return aux
 
+def gaussn2(x, n, *param):
+    aux=np.zeros(x.shape)
+    param_i=np.zeros(3)
+    param_j=np.zeros(3)
+    for i in range(n):
+        param_i[0] = param[i+2+3]
+        param_i[1] = param[0+3]+param[1+3]*i
+        param_i[2] = param[i+2+3+n]
+        aux = aux + gauss(x,*param_i)
+    param_j[0]=param[0]
+    param_j[1]=param[1]
+    param_j[2]=param[2]
+    aux = aux + gauss(x,*param_j)
+    return aux
+
 
 class gaussn_least(object):
     def __init__(self,x_data,y_data,n):
@@ -52,6 +67,38 @@ class gaussn_least(object):
 
     def evaluate(self):
         return gaussn(self.x,self.n,*self.param['x'])
+
+
+class gaussn_least2(object):
+    def __init__(self,x_data,y_data,n):
+        self.y = y_data
+        self.x = x_data
+        self.n = n
+        self.fit_func = lambda *param:gaussn2(x_data,n,*param)
+
+    def error_func(self,param):
+        fit = self.fit_func(*param)
+        return fit-self.y
+
+    def __call__(self,bounds,*guess):
+        self.param = least_squares(  self.error_func,guess,
+                                method='trf',
+                                verbose=1,
+                                max_nfev=2000,
+                                tr_solver='lsmr',
+                                bounds=bounds)
+
+        # +++ I love StackOverflow +++
+        J = self.param.jac
+        residuals_lsq = self.param.fun
+        cov = np.linalg.inv(J.T.dot(J)) * (residuals_lsq**2).mean()
+        perr = np.sqrt(np.diag(cov))
+
+        return self.param['x'],perr
+
+    def evaluate(self):
+        return gaussn2(self.x,self.n,*self.param['x'])
+
 
 
 def line_fit(f,X,f_sigma,x_text,y_text,title_text,n_figure,graph_sw):
