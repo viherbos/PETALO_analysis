@@ -10,6 +10,12 @@ def gauss2(x, *param):
     return param[0] * np.exp(-(x-param[1])**2/(2.*param[2]**2)) + \
            param[3] * np.exp(-(x-param[4])**2/(2.*param[5]**2))
 
+def GND(x, *param):
+    # Generalized normal distribution
+    # param[0]=ALFA | param[1]=BETA | param[2]=GAMMA | param[3]=MU
+    return (param[1]/(2*param[0]*param[2]*(1/param[1]))) * \
+           np.exp(-(np.abs(x-param[3])/param[0])**param[1])
+
 
 class fitting(object):
     def __call__(self, data, bins, fit_func, guess):
@@ -20,8 +26,6 @@ class fitting(object):
         # Histogram
         self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins)
         self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
-        print self.bin_centers
-        print self.bin_edges
 
         # Fitting function call
         try:
@@ -42,6 +46,55 @@ class fitting(object):
         return self.fit_func(in_data,*self.coeff)
 
 # This is the end
+
+class GND_fit(fitting):
+    def __call__(self, data, bins):
+        self.GND = GND
+        self.p0 = [np.std(data), 1, 1, np.mean(data)]
+        # First guess
+        super(GND_fit,self).__call__(data=data,
+                                     bins=bins,
+                                     guess=self.p0,
+                                     fit_func=self.GND)
+
+    def plot(self,axis,title,xlabel,ylabel,res=True,fit=True):
+        axis.hist(self.data, self.bins, align='left', facecolor='green')
+        axis.set_xlabel(xlabel)
+        axis.set_ylabel(ylabel)
+        axis.set_title(title)
+        if (fit==True):
+            axis.plot(self.bin_centers, self.hist_fit, 'r--', linewidth=1)
+            if (res==True):
+                mu = self.coeff[3]; mu_err = self.perr[3]
+                sigma = self.coeff[0]*np.sqrt(3) ; sigma_err = np.sqrt(3)*self.perr[0]
+
+                # Wikipedia
+                # NOTE:Try to include CHI_SQUARE
+
+                axis.text(0.95,0.95, (('$\mu$=%0.2f (+/- %0.2f) \n'+\
+                                     '$\sigma$=%0.2f (+/- %0.2f) ')  %
+                                        (mu , mu_err,
+                                         np.absolute(sigma) , sigma_err
+                                        )
+                                      ),
+                                         fontsize=6,
+                                         verticalalignment='top',
+                                         horizontalalignment='right',
+                                         transform=axis.transAxes)
+#            else:
+                # No resolution calculation
+                # axis.text(0.95,0.95, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
+                #                      '$\sigma$=%0.1f (+/- %0.1f) \n'+
+                #                      'FWHM=%0.1f (+/- %0.1f)') % \
+                #                         (self.coeff[1], self.perr[1],
+                #                          np.absolute(self.coeff[2]), self.perr[2],
+                #                          2.35*np.absolute(self.coeff[2]),
+                #                          2.35*np.absolute(self.perr[2]))),
+                #                          fontsize=6,
+                #                          verticalalignment='top',
+                #                          horizontalalignment='right',
+                #                          transform=axis.transAxes)
+
 
 class gauss_fit(fitting):
     def __call__(self, data, bins):
