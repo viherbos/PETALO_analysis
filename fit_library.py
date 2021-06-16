@@ -105,8 +105,8 @@ class fitting_nohist(object):
         self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
                                                 self.data, p0=self.guess,
                                                 ftol=1E-12, maxfev=100000,
-                                                bounds=self.bounds,
-                                                method='trf')
+                                                #bounds=self.bounds,
+                                                method='lm')
 
         self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
         #     # Error in parameter estimation
