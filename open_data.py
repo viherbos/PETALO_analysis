@@ -31,7 +31,7 @@ def raw_singles_to_hdf5(ldat_dir  = ".",
             i=i+1
             s = struct.unpack(struct_event,data)
             data_array.append(s)
-        print ("Number of Events %d" % i)
+        print("Number of Events %d" % i)
 
     with open(env_name, "rb") as f:
         while True:
@@ -39,7 +39,7 @@ def raw_singles_to_hdf5(ldat_dir  = ".",
             if not data: break
             j=j+1
             env_array.append(float(data))
-        print ("Number of TEMP SENSORS %d" % j)
+        print("Number of TEMP SENSORS %d" % j)
 
     with pd.HDFStore( hdf5_name,
                       complevel=9, complib='bzip2') as store:
@@ -74,16 +74,16 @@ def coincidence_to_hdf5(ldat_dir  = ".",
             i=i+1
             s = struct.unpack(struct_event,data)
             data_array.append(s)
-        print ("Number of Events %d" % i)
+        print("Number of Events %d" % i)
 
     with open(env_name, "rb") as f:
         while True:
             data = f.readline()
-            print data
+            print(data)
             if data=="": break
             j=j+1
             env_array.append(float(data))
-        print ("Number of TEMP SENSORS %d" % j)
+        print("Number of TEMP SENSORS %d" % j)
 
     with pd.HDFStore( hdf5_name,
                       complevel=9, complib='bzip2') as store:
@@ -214,8 +214,8 @@ if __name__=="__main__":
     args = parser.parse_args()
 
     if args.translate:
-        print ("HDF file = " + ''.join(args.hdf))
-        print ("LDAT file = " + ''.join(args.ldat))
+        print("HDF file = " + ''.join(args.hdf))
+        print("LDAT file = " + ''.join(args.ldat))
         coincidence_to_hdf5(   ldat_dir  = ".",
                                ldat_name = ''.join(args.ldat),
                                hdf5_name = ''.join(args.hdf),

@@ -16,6 +16,48 @@ def GND(x, *param):
     return (param[1]/(2*param[0]*param[2]*(1/param[1]))) * \
            np.exp(-(np.abs(x-param[3])/param[0])**param[1])
 
+def double_exp(x, *param):
+    alfa = 1.0/param[1]
+    beta = 1.0/param[0]
+    t_p = np.log(beta/alfa)/(beta-alfa)
+    K = (beta)*np.exp(alfa*t_p)/(beta-alfa)
+    f = param[2]*K*(np.exp(-(x-param[3])*alfa)-np.exp(-(x-param[3])*beta))
+    f[f<0] = 0
+    return f
+
+def Ddouble_exp(x, *param):
+    alfa1 = 1.0/param[1]
+    beta1 = 1.0/param[0]
+    t_p1 = np.log(beta1/alfa1)/(beta1-alfa1)
+    K1 = (beta1)*np.exp(alfa1*t_p1)/(beta1-alfa1)
+    f1 = param[2]*K1*(np.exp(-(x-param[3])*alfa1)-np.exp(-(x-param[3])*beta1))
+    f1[f1<0] = 0
+
+    alfa2 = 1.0/param[5]
+    beta2 = 1.0/param[4]
+    t_p2 = np.log(beta2/alfa2)/(beta2-alfa2)
+    K2 = (beta2)*np.exp(alfa2*t_p2)/(beta2-alfa2)
+    f2 = param[6]*K2*(np.exp(-(x-param[7])*alfa2)-np.exp(-(x-param[7])*beta2))
+    f2[f2<0] = 0
+
+    return f1+f2
+
+def sawtooth(x, *param):
+    amplitude = param[0]
+    period    = param[1]
+    shift     = param[2]
+    offset    = param[3]
+
+    return offset + (-2*amplitude/np.pi)*np.arctan(1/np.tan(((x-shift)*np.pi/period)))
+
+def sawtooth_inv(x,*param):
+    amplitude = param[0]
+    period    = param[1]
+    shift     = param[2]
+    offset    = param[3]
+
+    return shift+(period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
+
 
 class fitting(object):
     def __call__(self, data, bins, fit_func, guess):
@@ -32,9 +74,10 @@ class fitting(object):
             self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bin_centers,
                                                     self.hist, p0=self.guess)
             self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
+
             # Error in parameter estimation
         except:
-            print "Fitting Problems"
+            print("Fitting Problems")
             self.coeff = np.array(self.guess)
             self.perr  = np.array(self.guess)
 
@@ -45,7 +88,112 @@ class fitting(object):
     def evaluate(self,in_data):
         return self.fit_func(in_data,*self.coeff)
 
+
+class fitting_nohist(object):
+    def __call__(self, data, time, fit_func, guess, bounds):
+        self.bins  = time
+        self.data  = data
+        self.fit_func = fit_func
+        self.guess  = guess
+        self.bounds = bounds
+        # Histogram
+        #self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins)
+        #self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
+
+        # Fitting function call
+        # try:
+        self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
+                                                self.data, p0=self.guess,
+                                                ftol=1E-12, maxfev=100000,
+                                                bounds=self.bounds,
+                                                method='trf')
+
+        self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
+        #     # Error in parameter estimation
+        #     print(self.perr)
+        # except:
+        #     print("Fitting Problems")
+
+
+        self.fit = self.fit_func(self.bins, *self.coeff)
+        #Gets fitted function and residues
+
+    def evaluate(self,in_data):
+        return self.fit_func(in_data,*self.coeff)
+
 # This is the end
+
+class double_exp_fit(fitting_nohist):
+    def __call__(self, data, time, guess):
+        self.d_exp = double_exp
+        # First guess
+        super(double_exp_fit,self).__call__(data=data,
+                                       time=time,
+                                       fit_func=self.d_exp,
+                                       guess=guess)
+
+    def plot(self,axis,title,xlabel,ylabel,res=True,fit=True):
+        #axis.hist(self.data, self.bins, align='left', facecolor='green', edgecolor='white', linewidth=0.5)
+        axis.set_xlabel(xlabel)
+        axis.set_ylabel(ylabel)
+        axis.set_title(title)
+        if (fit==True):
+            axis.plot(self.bins, self.fit, 'r--', linewidth=1)
+            axis.text(0.95,0.95, (('tau2=%0.3f (+/- %0.3f) \n'+\
+                                 'tau1=%0.3f (+/- %0.3f) \n'+
+                                 'A=%0.3f (+/- %0.3f) \n'+\
+                                 't0=%0.3f (+/- %0.3f)') % \
+                                    (self.coeff[0] , self.perr[0],
+                                     self.coeff[1] , self.perr[1],
+                                     self.coeff[2] , self.perr[2],
+                                     self.coeff[3] , self.perr[3]
+                                    )
+                                  ),
+                                     fontsize=8,
+                                     verticalalignment='top',
+                                     horizontalalignment='right',
+                                     transform=axis.transAxes)
+
+class Ddouble_exp_fit(fitting_nohist):
+    def __call__(self, data, time, guess):
+        self.d_exp = Ddouble_exp
+        # First guess
+        super(Ddouble_exp_fit,self).__call__(data=data,
+                                       time=time,
+                                       fit_func=self.d_exp,
+                                       guess=guess)
+
+    def plot(self,axis,title,xlabel,ylabel,res=True,fit=True):
+        #axis.hist(self.data, self.bins, align='left', facecolor='green', edgecolor='white', linewidth=0.5)
+        axis.set_xlabel(xlabel)
+        axis.set_ylabel(ylabel)
+        axis.set_title(title)
+        if (fit==True):
+            axis.plot(self.bins, self.fit, 'r--', linewidth=1)
+            axis.text(0.95,0.95, (('tau2_a=%0.3f (+/- %0.3f) \n'+
+                                 'tau1_a=%0.3f (+/- %0.3f) \n'+
+                                 'A_a=%0.3f (+/- %0.3f) \n'+
+                                 't0_a=%0.3f (+/- %0.3f) \n'+
+                                 'tau2_b=%0.3f (+/- %0.3f) \n'+
+                                 'tau1_b=%0.3f (+/- %0.3f) \n'+
+                                 'A_b=%0.3f (+/- %0.3f) \n'+
+                                 't0_b=%0.3f (+/- %0.3f)') % \
+                                    (self.coeff[0] , self.perr[0],
+                                     self.coeff[1] , self.perr[1],
+                                     self.coeff[2] , self.perr[2],
+                                     self.coeff[3] , self.perr[3],
+                                     self.coeff[4] , self.perr[4],
+                                     self.coeff[5] , self.perr[5],
+                                     self.coeff[6] , self.perr[6],
+                                     self.coeff[7] , self.perr[7]
+                                    )
+                                  ),
+                                     fontsize=8,
+                                     verticalalignment='top',
+                                     horizontalalignment='right',
+                                     transform=axis.transAxes)
+
+
 
 class GND_fit(fitting):
     def __call__(self, data, bins):
@@ -70,14 +218,19 @@ class GND_fit(fitting):
 
                 # Wikipedia
                 # NOTE:Try to include CHI_SQUARE
+                half_p_dx = self.bin_centers[np.abs(self.hist_fit.astype('float') - np.max(self.hist_fit).astype('float')/2).argmin()] \
+                            - self.bin_centers[np.abs(self.hist_fit.astype('float') - np.max(self.hist_fit).astype('float')).argmin()]
+                FWHM = 2*half_p_dx
 
                 axis.text(0.95,0.95, (('$\mu$=%0.2f (+/- %0.2f) \n'+\
-                                     '$\sigma$=%0.2f (+/- %0.2f) ')  %
+                                     '$\sigma$=%0.2f (+/- %0.2f) \n' +\
+                                     'FWHM=%0.2f (+/- %0.2f)')  %
                                         (mu , mu_err,
-                                         np.absolute(sigma) , sigma_err
+                                         np.absolute(sigma) , sigma_err,
+                                         FWHM, 2.35*sigma_err
                                         )
                                       ),
-                                         fontsize=6,
+                                         fontsize=8,
                                          verticalalignment='top',
                                          horizontalalignment='right',
                                          transform=axis.transAxes)
@@ -106,18 +259,18 @@ class gauss_fit(fitting):
                                        guess=self.p0,
                                        fit_func=self.gauss1)
 
-    def plot(self,axis,title,xlabel,ylabel,res=True,fit=True):
-        axis.hist(self.data, self.bins, align='left', facecolor='green')
+    def plot(self,axis,title,xlabel,ylabel,res=True,text_pos=[0.95,0.95,"left"],fit=True):
+        axis.hist(self.data, self.bins, align='mid', facecolor='green', edgecolor='white', linewidth=0.5)
         axis.set_xlabel(xlabel)
         axis.set_ylabel(ylabel)
         axis.set_title(title)
         if (fit==True):
             axis.plot(self.bin_centers, self.hist_fit, 'r--', linewidth=1)
             if (res==True):
-                axis.text(0.95,0.95, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
-                                     '$\sigma$=%0.1f (+/- %0.1f) \n'+
-                                     'FWHM=%0.1f (+/- %0.1f) \n'+\
-                                     'Res=%0.1f%% (+/- %0.1f)') % \
+                axis.text(text_pos[0],text_pos[1], (('$\mu$=%0.3f (+/- %0.3f) \n'+\
+                                     '$\sigma$=%0.3f (+/- %0.3f) \n'+
+                                     'FWHM=%0.3f (+/- %0.3f) \n'+\
+                                     'Res=%0.3f%% (+/- %0.3f)') % \
                                         (self.coeff[1] , self.perr[1],
                                          np.absolute(self.coeff[2]) , self.perr[2],
                                          2.35*np.absolute(self.coeff[2]),
@@ -128,30 +281,30 @@ class gauss_fit(fitting):
                                                  (self.perr[1]/self.coeff[1])**2)
                                         )
                                       ),
-                                         fontsize=6,
+                                         fontsize=8,
                                          verticalalignment='top',
-                                         horizontalalignment='right',
+                                         horizontalalignment=text_pos[2],
                                          transform=axis.transAxes)
 
 
             else:
                 # No resolution calculation
-                axis.text(0.95,0.95, (('$\mu$=%0.1f (+/- %0.1f) \n'+\
-                                     '$\sigma$=%0.1f (+/- %0.1f) \n'+
-                                     'FWHM=%0.1f (+/- %0.1f)') % \
+                axis.text(text_pos[0],text_pos[1], (('$\mu$=%0.3f (+/- %0.3f) \n'+\
+                                     '$\sigma$=%0.3f (+/- %0.3f) \n'+
+                                     'FWHM=%0.3f (+/- %0.3f)') % \
                                         (self.coeff[1], self.perr[1],
                                          np.absolute(self.coeff[2]), self.perr[2],
                                          2.35*np.absolute(self.coeff[2]),
                                          2.35*np.absolute(self.perr[2]))),
-                                         fontsize=6,
+                                         fontsize=8,
                                          verticalalignment='top',
-                                         horizontalalignment='right',
+                                         horizontalalignment=text_pos[2],
                                          transform=axis.transAxes)
 
 class gauss_fit2(fitting):
     def __call__(self, data, mu_guess, bins):
         self.gauss2 = gauss2
-        self.p0 = [1, mu_guess[0], mu_guess[2], 1, mu_guess[1], mu_guess[3]]
+        self.p0 = [100, mu_guess[0], mu_guess[2], 100, mu_guess[1], mu_guess[3]]
         # First guess
         super(gauss_fit2,self).__call__(data=data,
                                        bins=bins,
