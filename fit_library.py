@@ -56,7 +56,10 @@ def sawtooth_inv(x,*param):
     shift     = param[2]
     offset    = param[3]
 
-    return shift+(period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
+    possible = shift+(period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
+    possible[possible<0]=possible[possible<0]+period
+
+    return possible
 
 
 class fitting(object):
@@ -90,7 +93,7 @@ class fitting(object):
 
 
 class fitting_nohist(object):
-    def __call__(self, data, time, fit_func, guess, bounds):
+    def __call__(self, data, time, fit_func, guess, bounds=[]):
         self.bins  = time
         self.data  = data
         self.fit_func = fit_func
