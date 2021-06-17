@@ -62,6 +62,17 @@ def sawtooth_inv(x,*param):
     return possible
 
 
+def saturation(x,*param):
+    slope = param[0]
+    sat   = param[1]
+    shift = param[2]
+    gain  = param[3]
+
+    value = gain*((slope*x-shift)/np.power(1+np.power((np.abs(slope*x-shift)),sat),1./sat))
+    value[value<0]=np.zeros(len(value[value<0]))
+
+    return value
+
 class fitting(object):
     def __call__(self, data, bins, fit_func, guess):
         self.guess = guess
