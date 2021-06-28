@@ -91,13 +91,16 @@ class fitting_hist(object):
 
 
         self.hist_fit = self.fit_func(self.bin_centers, *self.coeff)
+        self.chisq = np.sum(((self.hist-self.hist_fit)/self.hist_fit)**2)
+        self.df = len(self.bin_centers)-len(self.coeff)
+        self.chisq_r = self.chisq/self.df
         #Gets fitted function and residues
 
     def evaluate(self,in_data):
         return self.fit_func(in_data,*self.coeff)
 
 
-def gauss_fit(data,bins,plot=False,*p_param):
+def gauss_fit(data,bins,*p_param):
     gauss1 = gauss
     p0 = [1, np.mean(data), np.std(data)]
     # First guess
@@ -107,20 +110,20 @@ def gauss_fit(data,bins,plot=False,*p_param):
             guess=p0,
             fit_func=gauss)
 
-    if plot==True:
-        #p_param[0] -> axis
-        #p_param[1] -> title
-        #p_param[2] -> xlabel
-        #p_param[3] -> ylabel
-        #p_param[4] -> pos [0.95,0.95,"left"]
+    if p_param[0]==True:
+        #p_param[1] -> axis
+        #p_param[2] -> title
+        #p_param[3] -> xlabel
+        #p_param[4] -> ylabel
+        #p_param[5] -> pos [0.95,0.95,"left"]
 
-        p_param[0].hist(data, bins, align='mid', facecolor='green',
+        p_param[1].hist(data, bins, align='mid', facecolor='green',
                         edgecolor='white', linewidth=0.5)
-        p_param[0].set_xlabel(p_param[2])
-        p_param[0].set_ylabel(p_param[3])
-        p_param[0].set_title(p_param[1])
-        p_param[0].plot(Q_gauss.bin_centers, Q_gauss.hist_fit, 'r--', linewidth=1)
-        p_param[0].text(p_param[4][0],p_param[4][1], (('$\mu$=%0.3f (+/- %0.3f) \n'+\
+        p_param[1].set_xlabel(p_param[2])
+        p_param[1].set_ylabel(p_param[3])
+        p_param[1].set_title(p_param[1])
+        p_param[1].plot(Q_gauss.bin_centers, Q_gauss.hist_fit, 'r--', linewidth=1)
+        p_param[1].text(p_param[5][0],p_param[5][1], (('$\mu$=%0.3f (+/- %0.3f) \n'+\
                                      '$\sigma$=%0.3f (+/- %0.3f) \n'+
                                      'FWHM=%0.3f (+/- %0.3f) \n'+\
                                      'Res=%0.3f%% (+/- %0.3f)') % \
@@ -135,8 +138,10 @@ def gauss_fit(data,bins,plot=False,*p_param):
                                       ),
                                          fontsize=8,
                                          verticalalignment='top',
-                                         horizontalalignment=p_param[4][2],
-                                         transform=p_param[0].transAxes)
+                                         horizontalalignment=p_param[5][2],
+                                         transform=p_param[1].transAxes)
+
+    return Q_gauss.coeff,Q_gauss.perr,Q_gauss.chisq_r
 
 
 def Tn_fit(data, canal, min_count=10, plot=False,
