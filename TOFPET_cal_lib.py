@@ -34,6 +34,37 @@ def Baseline_work(data, canal, counter):
     select = datos[(datos['count'] >= magic_point)]
     return select['baseline_t'].max()
 
+def sawtooth(x, *param):
+    amplitude = param[0]
+    shift     = param[1]
+    offset    = param[2]
+    period    = 360 
+
+    return offset + (-2*amplitude/np.pi)*np.arctan(1/np.tan(((x-shift)*np.pi/period)))
+
+def sawtooth_inv(x,*param):
+    amplitude = param[0]
+    shift     = param[1]
+    offset    = param[2]
+    period    = 360
+    
+    possible = shift+(period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
+    #possible = (period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
+    possible[possible<0]=possible[possible<0]+period
+
+    return possible
+
+def sawtooth_inv_corr(x,*param):
+    amplitude = param[0]
+    shift     = param[1]
+    offset    = param[2]
+    period    = 360
+    
+    #possible = shift+(period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
+    possible = (period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
+    possible[possible<0]=possible[possible<0]+period
+
+    return possible
 
 class fitting_nohist(object):
     # General Fitting call
@@ -89,11 +120,15 @@ class fitting_hist(object):
             self.coeff = np.array(self.guess)
             self.perr  = np.array(self.guess)
 
-
+            
         self.hist_fit = self.fit_func(self.bin_centers, *self.coeff)
-        self.chisq = np.sum(((self.hist-self.hist_fit)/self.hist_fit)**2)
-        self.df = len(self.bin_centers)-len(self.coeff)
-        self.chisq_r = self.chisq/self.df
+        if np.isnan(self.hist_fit).any():
+            self.chisq_r = 1000
+        else:
+            self.chisq = np.sum(((self.hist-self.hist_fit)/self.hist_fit)**2)
+            self.df = len(self.bin_centers)-len(self.coeff)
+            self.chisq_r = self.chisq/self.df
+
         #Gets fitted function and residues
 
     def evaluate(self,in_data):
@@ -218,3 +253,35 @@ def QDC_fit(data, canal, tac, plot=False, guess=[9.87e-03, 9.46, 3.37e-01, 6.32e
         plt.legend()
 
     return Q_fit.chisq_r, Q_fit, qoffset, max_slope
+
+
+def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
+    chisq_r = 100
+    amplitude = guess[0]
+    shift     = guess[1]
+    offset    = guess[2]
+    period    = 360
+    
+    while((chisq_r > 1) & (shift < 360)):
+        datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
+        Q_fit = fitting_nohist()
+        coeff  = [amplitude,period,shift,offset]
+        
+        Q_fit(datos['mu'],datos['phase'],sawtooth,[amplitude,shift,offset],datos['sigma'])
+        
+        chisq_r = Q_fit.chisq_r
+        print("Channel = %d / CHISQR_r = %f" % (canal,chisq_r))
+        
+        shift = shift + 10
+    
+    if plot==True:
+        plt.figure()
+        phase_fine = np.arange(0,360)
+        plt.plot(phase_fine,Q_fit.evaluate(phase_fine),'b-',label="Fit")
+        plt.errorbar(datos.phase,datos['mu'], datos['sigma'],
+                     fmt='.',color='red',label="Data")
+        plt.xlabel("PHASE")
+        plt.ylabel("TFINE")
+        plt.legend()
+        
+    return chisq_r, Q_fit.coeff
