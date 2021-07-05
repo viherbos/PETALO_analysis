@@ -74,19 +74,26 @@ class fitting_nohist(object):
         self.fit_func = fit_func
         self.guess  = guess
         self.bounds = bounds
-
-        try:
+        
+        if not bounds:
             self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
                                                     self.data, p0=self.guess,
                                                     ftol=1E-12, maxfev=100000,
-                                                    #bounds=self.bounds,
                                                     method='lm'
                                                     )
+        else:
+#        try:
+            self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
+                                                        self.data, p0=self.guess,
+                                                        ftol=1E-12, maxfev=100000,
+                                                        bounds=self.bounds,
+                                                        method='trf'
+                                                        )
 
-            self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
+        self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
             # Error in parameter estimation
-        except:
-            print("Fitting Problems")
+#        except:
+#            print("Fitting Problems")
 
         self.fit = self.fit_func(self.bins, *self.coeff)
         self.chisq = np.sum(((self.data-self.fit)/sigmas)**2)
@@ -107,11 +114,15 @@ class fitting_hist(object):
         # Histogram
         self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins)
         self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
+        #self.bounds = [[0,0,0],[np.inf,1024,100]]
 
         # Fitting function call
         try:
             self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bin_centers,
-                                                    self.hist, p0=self.guess)
+                                                        self.hist, p0=self.guess,
+                                                        #ftol=1E-12, maxfev=1000,
+                                                        #bounds = self.bounds,
+                                                        method='lm')
             self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
 
             # Error in parameter estimation
@@ -219,24 +230,27 @@ def Tn_fit(data, canal, min_count=10, plot=False,
     return t_solution
 
 
-def QDC_fit(data, canal, tac, plot=False, guess=[9.87e-03, 9.46, 3.37e-01, 6.32e+02]):
+def QDC_fit(data, canal, tac, plot=False, guess=[1.78e-02,1.01e+01,9.21e+01,3.41e+02]):
     #Fitting QDC parameters
     slope = guess[0]
     sat   = guess[1]
     shift = guess[2]
     gain  = guess[3]
 
-    datos = data[(data.tac==tac)&(data.channel==canal)]
+    datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
 
     Q_fit = fitting_nohist()
     coeff  = [slope,sat,shift,gain]
 
-    Q_fit(datos.eval("mean"),datos.length,saturation,[slope,sat,shift,gain],datos.sigma)
+    guess_a = np.array(guess)
+    
+    Q_fit(datos['mu'],datos['tpulse'],saturation,[slope,sat,shift,gain],datos['sigma'],
+          bounds=[guess_a-guess_a/2,guess_a+guess_a/2])
     #chisq = np.sum(((datos.eval("mean")-Q_fit.evaluate(datos.length))/datos.sigma)**2)
-    print("Channel = %d / CHISQ_R = %f" % (canal,Q_fit.chisq_r))
+    print("Channel = %d / Slope_Error = %f" % (canal,Q_fit.perr[0]/Q_fit.coeff[0]))
 
-    max_slope  = np.max(np.diff(Q_fit.fit))/np.max(np.diff(datos.length))
-    length_max = datos.length.to_numpy()
+    max_slope  = np.max(np.diff(Q_fit.fit))/np.max(np.diff(datos['tpulse']))
+    length_max = datos['tpulse'].to_numpy()
     length_max = length_max[np.argmax(np.diff(Q_fit.fit))]
 
     qoffset    = Q_fit.evaluate(np.array([length_max]))-length_max*max_slope
@@ -245,8 +259,8 @@ def QDC_fit(data, canal, tac, plot=False, guess=[9.87e-03, 9.46, 3.37e-01, 6.32e
 
     if plot==True:
         plt.figure()
-        plt.plot(datos.length,Q_fit.evaluate(datos.length),'b-',label="Fit")
-        plt.errorbar(datos.length,datos.eval("mean"), datos.sigma,
+        plt.plot(datos['tpulse'],Q_fit.evaluate(datos['tpulse']),'b-',label="Fit")
+        plt.errorbar(datos['tpulse'],datos['mu'], datos['sigma'],
                      fmt='.',color='red',label="Data")
         plt.xlabel("Length")
         plt.ylabel("QFINE")
@@ -256,24 +270,45 @@ def QDC_fit(data, canal, tac, plot=False, guess=[9.87e-03, 9.46, 3.37e-01, 6.32e
 
 
 def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
-    chisq_r = 100
+    chisq_r = 10000
+    best_chi = 10000
+    best_shift = 0
     amplitude = guess[0]
     shift     = guess[1]
     offset    = guess[2]
     period    = 360
     
-    while((chisq_r > 1) & (shift < 360)):
-        datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
+    #Find gap
+    datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
+    salto = np.argmax(datos['mu'])
+    print(salto)
+    shift_min = datos['phase'].iloc[salto]-20
+    shift_max = datos['phase'].iloc[salto]+20
+    shift = shift_min
+    
+    amplitude = (np.min(datos['mu']) - np.max(datos['mu']))/2.0
+    offset    = np.min(datos['mu']) + np.abs(amplitude)
+    bounds    = [[amplitude-20,shift_min,offset-20],[amplitude+20,shift_max,offset+20]]
+    
+    while((chisq_r > 5) & (shift < shift_max)):
+        
         Q_fit = fitting_nohist()
         coeff  = [amplitude,period,shift,offset]
         
-        Q_fit(datos['mu'],datos['phase'],sawtooth,[amplitude,shift,offset],datos['sigma'])
-        
+        Q_fit(datos['mu'],datos['phase'],sawtooth,[amplitude,shift,offset],datos['sigma'],bounds=bounds)
         chisq_r = Q_fit.chisq_r
-        print("Channel = %d / CHISQR_r = %f" % (canal,chisq_r))
         
-        shift = shift + 10
+        if best_chi > chisq_r:
+            best_chi = chisq_r
+            best_shift = shift
+        
+        shift = shift + 0.25
     
+    Q_fit(datos['mu'],datos['phase'],sawtooth,[amplitude,best_shift,offset],datos['sigma'],bounds=bounds)
+    chisq_r = Q_fit.chisq_r
+    print("Channel = %d / TAC = %d / CHISQR_r = %f" % (canal,tac,chisq_r))
+    
+        
     if plot==True:
         plt.figure()
         phase_fine = np.arange(0,360)
