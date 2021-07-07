@@ -3,6 +3,7 @@ import scipy as sp
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+from scipy.optimize import brentq
 
 def gauss(x, *param):
     return param[0] * np.exp(-(x-param[1])**2/(2.*param[2]**2))
@@ -27,8 +28,8 @@ def saturation_zero(x,*param):
     value[value<0]=np.zeros(len(value[value<0]))
     return value
 
-def Baseline_work(data, canal, counter):
-    datos = data[(data.channel_id==canal)&(data.vth_t1==62)]
+def Baseline_work(data, canal, thr, counter):
+    datos = data[(data['channel_id']==canal)&(data[thr]==62)]
     counter_max = datos['count'].max()
     magic_point = 0.999*counter_max
     select = datos[(datos['count'] >= magic_point)]
@@ -136,7 +137,7 @@ class fitting_hist(object):
         if np.isnan(self.hist_fit).any():
             self.chisq_r = 1000
         else:
-            self.chisq = np.sum(((self.hist-self.hist_fit)/self.hist_fit)**2)
+            self.chisq = np.sum((((self.hist-self.hist_fit)**2)/self.hist_fit))
             self.df = len(self.bin_centers)-len(self.coeff)
             self.chisq_r = self.chisq/self.df
 
@@ -190,7 +191,7 @@ def gauss_fit(data,bins,*p_param):
     return Q_gauss.coeff,Q_gauss.perr,Q_gauss.chisq_r
 
 
-def Tn_fit(data, canal, min_count=10, plot=False,
+def Tn_fit(data, canal, thr, min_count=10, plot=False, axis=[],
            guess=[1.83, 11.11, 55.7, 2.1e+06]):
     # Fitting Thresholds
 
@@ -200,33 +201,51 @@ def Tn_fit(data, canal, min_count=10, plot=False,
     gain  = guess[3]
     #offset = guess[4]
 
-    baseline_T = Baseline_work(data, canal, 2**22)
-    baseline_T = baseline_T - 10   # 5 is a guess for a better fit of THn
-    print("Baseline %f" % baseline_T)
+    #baseline_T = Baseline_work(data, canal, 2**22)
+    #baseline_T = baseline_T - 10   # 5 is a guess for a better fit of THn
+    #print("Baseline %f" % baseline_T)
 
-    datos = data[(data['channel_id']==canal) & (data['baseline_t']==baseline_T)]
+    datos = data[(data['channel_id']==canal)] # & (data['baseline_t']==baseline_T)]
 
     T_fit = fitting_nohist()
 
-    T_fit(datos['count'],datos['vth_t1'],saturation,[slope,sat,shift,gain],
-          np.zeros(len(datos['count']))+1.0)
+    T_fit(datos['count'],datos[thr],saturation,[slope,sat,shift,gain],
+          np.zeros(len(datos['count']))+1.0,[[0,3,0,1E6],[4E6,15,63,10E6]])
 
     #chisq = np.sum(((datos['count']-T_fit.evaluate(datos['vth_t1']))/1.0)**2)
     print("Channel = %d / CHISQR = %f" % (canal,T_fit.chisq_r))
 
     if plot==True:
-        plt.figure()
-        plt.plot(np.arange(0,64,0.1),T_fit.evaluate(np.arange(0,64,0.1)),'b-',label="Fit")
-        plt.errorbar(datos['vth_t1'],datos['count'], 1.0,
+        #plt.figure()
+        axis.plot(np.arange(0,64,0.1),T_fit.evaluate(np.arange(0,64,0.1)),'b-',label="Fit")
+        axis.errorbar(datos[thr],datos['count'], 1.0,
                      fmt='.',color='red',label="Data")
-        plt.xlabel("th_T1")
-        plt.ylabel("COUNT")
-        plt.legend()
-
-    func = lambda x : min_count - saturation(x,*T_fit.coeff)
-    t_solution = np.floor(brentq(func, 0, 62))
-    print("Threshold at %f for a 0.01 activity" % t_solution)
-    print(T_fit.coeff)
+        #axis.xlabel("th_T1")
+        #axis.ylabel("COUNT")
+        #plt.legend()
+    
+    # This threshold computation stinks
+    #func = lambda x : min_count - saturation(x,*T_fit.coeff)
+    #try:
+    #    t_solution = np.floor(brentq(func, 0, 62))
+    #    print("Threshold at %f for a 0.01 activity" % t_solution)
+    #    print(T_fit.coeff)
+    #except:
+    #    print("No solution found")
+    #    print(T_fit.coeff)
+    #    t_solution = -1
+     
+    datos_f = np.array(datos['count'])
+    
+    t_solution = -1
+    i = int(np.floor(T_fit.coeff[2]))
+    
+    while t_solution<0:
+        if (datos_f[i] < min_count):
+            t_solution = i
+        i = i - 1
+        
+            
     return t_solution
 
 
