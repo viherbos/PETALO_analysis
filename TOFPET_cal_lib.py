@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.optimize import brentq
+from scipy.special import erf
 
 def gauss(x, *param):
     return param[0] * np.exp(-(x-param[1])**2/(2.*param[2]**2))
@@ -66,6 +67,38 @@ def sawtooth_inv_corr(x,*param):
     possible[possible<0]=possible[possible<0]+period
 
     return possible
+
+
+def semigauss_old(x, *param):
+
+    tau_sipm_0 = param[0]
+    tau_sipm_1 = param[1]
+    gain       = param[2]
+    shift      = param[3]
+    
+    alfa      = 1.0/tau_sipm_1
+    beta      = 1.0/tau_sipm_0
+    t_p       = np.log(beta/alfa)/(beta-alfa)
+    K         = (beta)*np.exp(alfa*t_p)/(beta-alfa)
+    value     = gain*K*(np.exp(-alfa*(x-shift))-np.exp(-beta*(x-shift)))
+    
+    value[value<0]=np.zeros(len(value[value<0]))
+    
+    return value
+
+def semigauss(x, *param):
+    e = param[0]
+    w = param[1]
+    a = param[2]
+    gain = param[3]
+    
+    t = (x-e)/w
+    
+    pdf = 1/np.sqrt(2*np.pi) * np.exp(-t**2/2)
+    cdf = (1 + erf(a*t/np.sqrt(2))) / 2
+    
+    return gain * 2 / w * pdf * cdf
+
 
 class fitting_nohist(object):
     # General Fitting call
@@ -147,9 +180,45 @@ class fitting_hist(object):
         return self.fit_func(in_data,*self.coeff)
 
 
+def semigauss_fit(data,bins,*p_param):
+    gauss1 = gauss
+    p0 = [np.mean(data), np.std(data), 0, np.max(data)]
+    #p0 = [320, 3, -10,1600]
+    # First guess
+    Q_gauss = fitting_hist()
+    Q_gauss(data=data,
+            bins=bins,
+            guess=p0,
+            fit_func=semigauss)
+
+    if p_param[0]==True:
+        p_param[1].hist(data, bins, align='mid', facecolor='green',
+                        edgecolor='white', linewidth=0.5)
+        p_param[1].plot(Q_gauss.bin_centers, Q_gauss.hist_fit, 'r--', linewidth=1)
+    
+    e = Q_gauss.coeff[0]
+    w = Q_gauss.coeff[1]
+    a = Q_gauss.coeff[2]
+    gain = Q_gauss.coeff[3]
+    
+    d    = a/np.sqrt(1+a**2)
+    #mu_z = np.sqrt(2/np.pi) * d
+    #r_s  = np.sqrt(1-mu_z**2)
+    #skew = ((4-np.pi)/2) * ((d*np.sqrt(2/np.pi))**3 / (1-2*(d**2)/np.pi)**1.5)
+    #moda = mu_z - skew * r_s/2 - np.sign(a)/2 * np.exp(-(2*np.pi)/np.abs(a))
+    
+    rango  = np.arange(np.min(data),np.max(data),0.001)
+    moda   = rango[np.argmax(Q_gauss.evaluate(rango))]
+    sigma  = w*np.sqrt(1-(2*d**2/np.pi))
+    
+    return Q_gauss.coeff, Q_gauss.perr, moda, sigma
+
+    
+    
 def gauss_fit(data,bins,*p_param):
     gauss1 = gauss
     p0 = [1, np.mean(data), np.std(data)]
+    #p0 = [0.25, 0.25, 200, 400]
     # First guess
     Q_gauss = fitting_hist()
     Q_gauss(data=data,
@@ -246,7 +315,7 @@ def Tn_fit(data, canal, thr, min_count=10, plot=False, axis=[],
         i = i - 1
         
             
-    return t_solution
+    return t_solution,T_fit
 
 
 def QDC_fit(data, canal, tac, plot=False, guess=[1.78e-02,1.01e+01,9.21e+01,3.41e+02]):
