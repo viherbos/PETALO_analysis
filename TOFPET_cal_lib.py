@@ -211,7 +211,8 @@ def semigauss_fit(data,bins,*p_param):
     moda   = rango[np.argmax(Q_gauss.evaluate(rango))]
     sigma  = w*np.sqrt(1-(2*d**2/np.pi))
     
-    return Q_gauss.coeff, Q_gauss.perr, moda, sigma
+        
+    return Q_gauss.coeff, Q_gauss.perr, moda, sigma, Q_gauss.chisq_r
 
     
     
