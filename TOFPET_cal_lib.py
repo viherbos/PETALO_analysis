@@ -87,6 +87,7 @@ def semigauss_old(x, *param):
     return value
 
 def semigauss(x, *param):
+    # Wikipedia (https://stackoverflow.com/questions/5884768/skew-normal-distribution-in-scipy)
     e = param[0]
     w = param[1]
     a = param[2]
@@ -112,22 +113,25 @@ class fitting_nohist(object):
         if not bounds:
             self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
                                                     self.data, p0=self.guess,
-                                                    ftol=1E-12, maxfev=100000,
+                                                    tol=1E-12, maxfev=10000,
                                                     method='lm'
                                                     )
         else:
-#        try:
-            self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
-                                                        self.data, p0=self.guess,
-                                                        ftol=1E-12, maxfev=100000,
-                                                        bounds=self.bounds,
-                                                        method='trf'
-                                                        )
+            try:
+                self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
+                                                            self.data, p0=self.guess,
+                                                            ftol=1E-12, maxfev=10000,
+                                                            bounds=self.bounds,
+                                                            method='trf',
+                                                            sigma = sigmas
+                                                            )
 
-        self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
+                self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
             # Error in parameter estimation
-#        except:
-#            print("Fitting Problems")
+            except:
+                print("Fitting Problems")
+                self.coeff = np.array(self.guess)
+                self.perr  = np.array(self.guess)
 
         self.fit = self.fit_func(self.bins, *self.coeff)
         self.chisq = np.sum(((self.data-self.fit)/sigmas)**2)
@@ -141,20 +145,20 @@ class fitting_nohist(object):
 
 class fitting_hist(object):
     def __call__(self, data, bins, fit_func, guess):
-        self.guess = guess
+        self.guess = np.array(guess)
         self.bins  = bins
         self.data  = data
         self.fit_func = fit_func
         # Histogram
         self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins)
         self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
-        #self.bounds = [[0,0,0],[np.inf,1024,100]]
+        #self.bounds = [self.guess-self.guess*0.5,self.guess+self.guess*0.5]
 
         # Fitting function call
         try:
             self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bin_centers,
                                                         self.hist, p0=self.guess,
-                                                        #ftol=1E-12, maxfev=1000,
+                                                        ftol=1E-12, maxfev=1000,
                                                         #bounds = self.bounds,
                                                         method='lm')
             self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
@@ -182,7 +186,8 @@ class fitting_hist(object):
 
 def semigauss_fit(data,bins,*p_param):
     gauss1 = gauss
-    p0 = [np.mean(data), np.std(data), 0, np.max(data)]
+    #p0 = [np.mean(data), np.std(data), 0, np.max(data)]
+    p0 = [np.mean(data), np.std(data), -1, np.max(data)]
     #p0 = [320, 3, -10,1600]
     # First guess
     Q_gauss = fitting_hist()
@@ -369,22 +374,102 @@ def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
     
     #Find gap
     datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
-    salto = np.argmax(datos['mu'])
-    print(salto)
-    shift_min = datos['phase'].iloc[salto]-20
-    shift_max = datos['phase'].iloc[salto]+20
+    sl_window = np.concatenate([np.diff(datos['mu']),[0]])
+    phase_array = datos['phase']
+    
+    #plt.figure()
+    #phase_fine = datos['phase']
+    #plt.errorbar(datos.phase,datos['mu'], datos['sigma'],
+    #                 fmt='.',color='red',label="Data")
+    
+    #Top slope points
+    maxis = np.argwhere(sl_window > 100)
+    #Check if next sample comes back to zero (phase gap) o has an equal but negative slope
+    jump = np.argwhere(sl_window[maxis+1] > -25)
+    try:
+        salto = phase_array.to_numpy()[maxis[jump[0,0]]]
+    except:
+        salto = 359
+    print("GAP",phase_array.to_numpy()[maxis[jump]])
+    
+    shift_min = salto - 20 #datos['phase'].iloc[salto]-20
+    shift_max = salto + 20 #datos['phase'].iloc[salto]+20
+    
+    if shift_min < 0:
+        shift_min = 0
+    if shift_max > 359.5:
+        shift_max = 359.5
+    
     shift = shift_min
     
+    # Now let's build a new dataframe with the right mu and sigma
+    
+    indexes = datos.index
+    for i in datos['phase']:
+        index = indexes[datos['phase']==i]
+        #print(datos.loc[index,'mu'].values)
+        if salto < 30:
+            if ((i < salto) | (i > salto + 40.0)): 
+                if (datos.loc[index,'mu'].values > datos.loc[index,'mu2'].values):
+                    datos.loc[index,'mu'] = datos.loc[index,'mu2']
+                    datos.loc[index,'sigma'] = datos.loc[index,'sigma']
+            else:
+                if (datos.loc[index,'mu'].values < datos.loc[index,'mu2'].values):
+                    datos.loc[index,'mu'] = datos.loc[index,'mu2']
+                    datos.loc[index,'sigma'] = datos.loc[index,'sigma']
+        elif salto > 330:
+            if ((i < salto) & (i > salto - 40.0)): 
+                if (datos.loc[index,'mu'].values > datos.loc[index,'mu2'].values):
+                    datos.loc[index,'mu'] = datos.loc[index,'mu2']
+                    datos.loc[index,'sigma'] = datos.loc[index,'sigma']
+            else:
+                if (datos.loc[index,'mu'].values < datos.loc[index,'mu2'].values):
+                    datos.loc[index,'mu'] = datos.loc[index,'mu2']
+                    datos.loc[index,'sigma'] = datos.loc[index,'sigma']
+        else:
+            if i < salto: 
+                if (datos.loc[index,'mu'].values > datos.loc[index,'mu2'].values):
+                    datos.loc[index,'mu'] = datos.loc[index,'mu2']
+                    datos.loc[index,'sigma'] = datos.loc[index,'sigma']
+            else:
+                if (datos.loc[index,'mu'].values < datos.loc[index,'mu2'].values):
+                    datos.loc[index,'mu'] = datos.loc[index,'mu2']
+                    datos.loc[index,'sigma'] = datos.loc[index,'sigma']
+    
+    
+                
     amplitude = (np.min(datos['mu']) - np.max(datos['mu']))/2.0
     offset    = np.min(datos['mu']) + np.abs(amplitude)
     bounds    = [[amplitude-20,shift_min,offset-20],[amplitude+20,shift_max,offset+20]]
     
-    while((chisq_r > 5) & (shift < shift_max)):
+    # Sigmas for fit optimizing
+    sigma_w = datos['sigma'].to_numpy()
+    weight = np.ones(sigma_w.shape)
+    min_pos = np.argmin(datos['mu'])
+    max_pos = np.argmax(datos['mu'])
+    
+    zone = 20
+    extra = 8
+    
+    if min_pos-zone > 0:
+        weight[min_pos-zone:min_pos]=weight[min_pos-zone:min_pos]*extra
+    else:
+        weight[:min_pos]=weight[:min_pos]*extra
+        
+    if max_pos+zone < len(sigma_w):
+        weight[max_pos:max_pos+zone]=weight[max_pos:max_pos+zone]*extra
+    else:
+        weight[max_pos:]=weight[max_pos:]*extra
+        
+    sigma_w = sigma_w*weight
+    
+    
+    while((chisq_r > 2) & (shift < shift_max)):
         
         Q_fit = fitting_nohist()
         coeff  = [amplitude,period,shift,offset]
         
-        Q_fit(datos['mu'],datos['phase'],sawtooth,[amplitude,shift,offset],datos['sigma'],bounds=bounds)
+        Q_fit(datos['mu'],datos['phase'],sawtooth,[amplitude,shift,offset],sigma_w,bounds=bounds)
         chisq_r = Q_fit.chisq_r
         
         if best_chi > chisq_r:
@@ -393,14 +478,15 @@ def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
         
         shift = shift + 0.25
     
-    Q_fit(datos['mu'],datos['phase'],sawtooth,[amplitude,best_shift,offset],datos['sigma'],bounds=bounds)
+    Q_fit(datos['mu'],datos['phase'],sawtooth,[amplitude,best_shift,offset],sigma_w,bounds=bounds)
     chisq_r = Q_fit.chisq_r
     print("Channel = %d / TAC = %d / CHISQR_r = %f" % (canal,tac,chisq_r))
     
         
     if plot==True:
         plt.figure()
-        phase_fine = np.arange(0,360)
+        #phase_fine = datos['phase']
+        phase_fine = np.arange(0,360,0.125)
         plt.plot(phase_fine,Q_fit.evaluate(phase_fine),'b-',label="Fit")
         plt.errorbar(datos.phase,datos['mu'], datos['sigma'],
                      fmt='.',color='red',label="Data")
