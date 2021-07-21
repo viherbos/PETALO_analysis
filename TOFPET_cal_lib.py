@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.optimize import brentq
 from scipy.special import erf
+from scipy import interpolate
+
 
 def gauss(x, *param):
     return param[0] * np.exp(-(x-param[1])**2/(2.*param[2]**2))
@@ -19,6 +21,20 @@ def saturation(x,*param):
     value = gain*(1 + ((slope*(x-shift))/np.power(1+np.power((np.abs(slope*(x-shift))),sat),1./sat)))
     return value
 
+def saturation_poly(x,*param):
+    
+    return param[0]+param[1]*x+param[2]*(x**2)+param[3]*(x**3)+param[4]*(x**4)+param[5]*(x**5)+\
+                               param[6]*(x**6)+param[7]*(x**7)+param[8]*(x**8)+param[9]*(x**9)
+
+#def inv_saturation_spline(x,*param):
+    #spline_conf = [np.array([10,10,10,10,30,40,50,60,70,90,110,150,150,150,150]),
+    #              np.concatenate([[0],*param,[0,0,0,0]]),
+    #              3]
+#    spline_conf = interpolate.BSpline([10,10,10,10,30,40,50,60,70,90,110,150,150,150,150],
+#                                      np.concatenate([[0],*param,[0,0,0,0]]),3)
+    
+#    return interpolate.splev(x, spline_conf, der=0)
+    
 def saturation_zero(x,*param):
     #QDC
     slope = param[0]
@@ -101,6 +117,29 @@ def semigauss(x, *param):
     return gain * 2 / w * pdf * cdf
 
 
+
+def inv_saturation_spline(x,*param):
+    #param_array = np.array(param)
+    spline_conf = interpolate.BSpline([10,10,10,10,30,40,50,60,70,90,110,150,150,150,150],
+                                      np.concatenate([[0],*param,[0,0,0,0]]),3)
+    
+    return interpolate.splev(x, spline_conf, der=0)
+
+
+def apply_inv_sat_spline(dat):
+    dat['efine_corrected'] = dat['efine'] - dat.apply(lambda data: inv_saturation_spline(
+                                                                      data['integ_w'],data['spl0'],
+                                                                      data['spl1'],data['spl2'],
+                                                                      data['spl3'],data['spl4'],
+                                                                      data['spl5'],data['spl6'],
+                                                                      data['spl7'],data['spl8'],
+                                                                      data['spl9']),axis=1)
+
+    
+###########################################################################################################
+
+
+
 class fitting_nohist(object):
     # General Fitting call
     def __call__(self, data, time, fit_func, guess, sigmas, bounds=[]):
@@ -113,7 +152,6 @@ class fitting_nohist(object):
         if not bounds:
             self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
                                                     self.data, p0=self.guess,
-                                                    tol=1E-12, maxfev=10000,
                                                     method='lm'
                                                     )
         else:
@@ -324,7 +362,7 @@ def Tn_fit(data, canal, thr, min_count=10, plot=False, axis=[],
     return t_solution,T_fit
 
 
-def QDC_fit(data, canal, tac, plot=False, guess=[1.78e-02,1.01e+01,9.21e+01,3.41e+02]):
+def QDC_fit(data, canal, tac, plot=False, guess=[1.78e-02,1.01e+01,9.21e+01,3.41e+02],axis=0):
     #Fitting QDC parameters
     slope = guess[0]
     sat   = guess[1]
@@ -352,15 +390,72 @@ def QDC_fit(data, canal, tac, plot=False, guess=[1.78e-02,1.01e+01,9.21e+01,3.41
     print("IBIAS (Q/T) = %f" % max_slope)
 
     if plot==True:
-        plt.figure()
-        plt.plot(datos['tpulse'],Q_fit.evaluate(datos['tpulse']),'b-',label="Fit")
-        plt.errorbar(datos['tpulse'],datos['mu'], datos['sigma'],
+        #plt.figure()
+        axis.plot(datos['tpulse'],Q_fit.evaluate(datos['tpulse']),'b-',label="Fit")
+        axis.errorbar(datos['tpulse'],datos['mu'], datos['sigma'],
                      fmt='.',color='red',label="Data")
-        plt.xlabel("Length")
-        plt.ylabel("QFINE")
-        plt.legend()
+        #plt.xlabel("Length")
+        #plt.ylabel("QFINE")
+        #plt.legend()
 
     return Q_fit.chisq_r, Q_fit, qoffset, max_slope
+
+
+def QDC_fit_p(data, canal, tac, plot=False, guess=[0,0,0,0,0,0,0,0,0,0],axis=0):
+    #Fitting QDC parameters
+    
+    datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
+
+    Q_fit = fitting_nohist()
+    
+    guess_a = np.array(guess)
+    bounds = [[-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf],
+               [ np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf]]
+    sigmas = np.concatenate((1*np.ones(4),
+                             0.05*np.ones(6),
+                             0.1*np.ones(20)))
+    Q_fit(datos['mu'],datos['tpulse'],saturation_poly,guess,sigmas,bounds)  
+    
+
+    if plot==True:
+        #plt.figure()
+        axis.plot(datos['tpulse'],Q_fit.evaluate(datos['tpulse']),'b-',label="Fit")
+        axis.errorbar(datos['tpulse'],datos['mu'], datos['sigma'],
+                     fmt='.',color='red',label="Data")
+        #plt.xlabel("Length")
+        #plt.ylabel("QFINE")
+        #plt.legend()
+
+    return Q_fit.chisq_r, Q_fit
+
+
+
+def QDC_inter_sp(data, canal, tac, plot=False, axis=0):
+   
+    datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
+
+    t_pulse = datos['tpulse'].to_numpy()
+    mu      = datos['mu'].to_numpy()
+    t_pulse = np.concatenate([t_pulse[1:7],t_pulse[7:16:2]])
+    mu      = np.concatenate([mu[1:7],mu[7:16:2]])
+    
+   
+    spl_conf = interpolate.splrep(t_pulse,mu,s=0)
+    
+    spl_conf = spl_conf[1][1:11]
+
+    if plot==True:
+        #plt.figure()
+        xnew = np.arange(20,180)
+        ynew = inv_saturation_spline(xnew,spl_conf)
+        axis.plot(xnew,ynew,'b-',label="Fit")
+        axis.errorbar(datos['tpulse'],datos['mu'], datos['sigma'],
+                     fmt='.',color='red',label="Data")
+        #plt.xlabel("Length")
+        #plt.ylabel("QFINE")
+        #plt.legend()
+
+    return spl_conf
 
 
 def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
@@ -448,7 +543,7 @@ def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
     min_pos = np.argmin(datos['mu'])
     max_pos = np.argmax(datos['mu'])
     
-    zone = 20
+    zone = 5
     extra = 8
     
     if min_pos-zone > 0:
