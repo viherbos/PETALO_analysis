@@ -22,7 +22,7 @@ def saturation(x,*param):
     return value
 
 def saturation_poly(x,*param):
-    
+
     return param[0]+param[1]*x+param[2]*(x**2)+param[3]*(x**3)+param[4]*(x**4)+param[5]*(x**5)+\
                                param[6]*(x**6)+param[7]*(x**7)+param[8]*(x**8)+param[9]*(x**9)
 
@@ -32,9 +32,9 @@ def saturation_poly(x,*param):
     #              3]
 #    spline_conf = interpolate.BSpline([10,10,10,10,30,40,50,60,70,90,110,150,150,150,150],
 #                                      np.concatenate([[0],*param,[0,0,0,0]]),3)
-    
+
 #    return interpolate.splev(x, spline_conf, der=0)
-    
+
 def saturation_zero(x,*param):
     #QDC
     slope = param[0]
@@ -56,7 +56,7 @@ def sawtooth(x, *param):
     amplitude = param[0]
     shift     = param[1]
     offset    = param[2]
-    period    = 360 
+    period    = 360
 
     return offset + (-2*amplitude/np.pi)*np.arctan(1/np.tan(((x-shift)*np.pi/period)))
 
@@ -65,7 +65,7 @@ def sawtooth_inv(x,*param):
     shift     = param[1]
     offset    = param[2]
     period    = 360
-    
+
     possible = shift+(period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
     #possible = (period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
     possible[possible<0]=possible[possible<0]+period
@@ -77,7 +77,7 @@ def sawtooth_inv_corr(x,*param):
     shift     = param[1]
     offset    = param[2]
     period    = 360
-    
+
     #possible = shift+(period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
     possible = (period/np.pi)*np.arctan(1/np.tan((np.pi/(-2*amplitude))*(x-offset)))
     possible[possible<0]=possible[possible<0]+period
@@ -91,15 +91,15 @@ def semigauss_old(x, *param):
     tau_sipm_1 = param[1]
     gain       = param[2]
     shift      = param[3]
-    
+
     alfa      = 1.0/tau_sipm_1
     beta      = 1.0/tau_sipm_0
     t_p       = np.log(beta/alfa)/(beta-alfa)
     K         = (beta)*np.exp(alfa*t_p)/(beta-alfa)
     value     = gain*K*(np.exp(-alfa*(x-shift))-np.exp(-beta*(x-shift)))
-    
+
     value[value<0]=np.zeros(len(value[value<0]))
-    
+
     return value
 
 def semigauss(x, *param):
@@ -108,12 +108,12 @@ def semigauss(x, *param):
     w = param[1]
     a = param[2]
     gain = param[3]
-    
+
     t = (x-e)/w
-    
+
     pdf = 1/np.sqrt(2*np.pi) * np.exp(-t**2/2)
     cdf = (1 + erf(a*t/np.sqrt(2))) / 2
-    
+
     return gain * 2 / w * pdf * cdf
 
 
@@ -122,7 +122,7 @@ def inv_saturation_spline(x,*param):
     #param_array = np.array(param)
     spline_conf = interpolate.BSpline([10,10,10,10,30,40,50,60,70,90,110,150,150,150,150],
                                       np.concatenate([[0],*param,[0,0,0,0]]),3)
-    
+
     return interpolate.splev(x, spline_conf, der=0)
 
 
@@ -135,7 +135,7 @@ def apply_inv_sat_spline(dat):
                                                                       data['spl7'],data['spl8'],
                                                                       data['spl9']),axis=1)
 
-    
+
 ###########################################################################################################
 
 
@@ -148,7 +148,7 @@ class fitting_nohist(object):
         self.fit_func = fit_func
         self.guess  = guess
         self.bounds = bounds
-        
+
         if not bounds:
             self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
                                                     self.data, p0=self.guess,
@@ -207,7 +207,7 @@ class fitting_hist(object):
             self.coeff = np.array(self.guess)
             self.perr  = np.array(self.guess)
 
-            
+
         self.hist_fit = self.fit_func(self.bin_centers, *self.coeff)
         if np.isnan(self.hist_fit).any():
             self.chisq_r = 1000
@@ -238,27 +238,27 @@ def semigauss_fit(data,bins,*p_param):
         p_param[1].hist(data, bins, align='mid', facecolor='green',
                         edgecolor='white', linewidth=0.5)
         p_param[1].plot(Q_gauss.bin_centers, Q_gauss.hist_fit, 'r--', linewidth=1)
-    
+
     e = Q_gauss.coeff[0]
     w = Q_gauss.coeff[1]
     a = Q_gauss.coeff[2]
     gain = Q_gauss.coeff[3]
-    
+
     d    = a/np.sqrt(1+a**2)
     #mu_z = np.sqrt(2/np.pi) * d
     #r_s  = np.sqrt(1-mu_z**2)
     #skew = ((4-np.pi)/2) * ((d*np.sqrt(2/np.pi))**3 / (1-2*(d**2)/np.pi)**1.5)
     #moda = mu_z - skew * r_s/2 - np.sign(a)/2 * np.exp(-(2*np.pi)/np.abs(a))
-    
+
     rango  = np.arange(np.min(data),np.max(data),0.001)
     moda   = rango[np.argmax(Q_gauss.evaluate(rango))]
     sigma  = w*np.sqrt(1-(2*d**2/np.pi))
-    
-        
+
+
     return Q_gauss.coeff, Q_gauss.perr, moda, sigma, Q_gauss.chisq_r
 
-    
-    
+
+
 def gauss_fit(data,bins,*p_param):
     gauss1 = gauss
     p0 = [1, np.mean(data), np.std(data)]
@@ -336,7 +336,7 @@ def Tn_fit(data, canal, thr, min_count=10, plot=False, axis=[],
         #axis.xlabel("th_T1")
         #axis.ylabel("COUNT")
         #plt.legend()
-    
+
     # This threshold computation stinks
     #func = lambda x : min_count - saturation(x,*T_fit.coeff)
     #try:
@@ -347,18 +347,18 @@ def Tn_fit(data, canal, thr, min_count=10, plot=False, axis=[],
     #    print("No solution found")
     #    print(T_fit.coeff)
     #    t_solution = -1
-     
+
     datos_f = np.array(datos['count'])
-    
+
     t_solution = -1
     i = int(np.floor(T_fit.coeff[2]))
-    
+
     while t_solution<0:
         if (datos_f[i] < min_count):
             t_solution = i
         i = i - 1
-        
-            
+
+
     return t_solution,T_fit
 
 
@@ -375,7 +375,7 @@ def QDC_fit(data, canal, tac, plot=False, guess=[1.78e-02,1.01e+01,9.21e+01,3.41
     coeff  = [slope,sat,shift,gain]
 
     guess_a = np.array(guess)
-    
+
     Q_fit(datos['mu'],datos['tpulse'],saturation,[slope,sat,shift,gain],datos['sigma'],
           bounds=[guess_a-guess_a/2,guess_a+guess_a/2])
     #chisq = np.sum(((datos.eval("mean")-Q_fit.evaluate(datos.length))/datos.sigma)**2)
@@ -403,19 +403,19 @@ def QDC_fit(data, canal, tac, plot=False, guess=[1.78e-02,1.01e+01,9.21e+01,3.41
 
 def QDC_fit_p(data, canal, tac, plot=False, guess=[0,0,0,0,0,0,0,0,0,0],axis=0):
     #Fitting QDC parameters
-    
+
     datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
 
     Q_fit = fitting_nohist()
-    
+
     guess_a = np.array(guess)
     bounds = [[-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf],
                [ np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf]]
     sigmas = np.concatenate((1*np.ones(4),
                              0.05*np.ones(6),
                              0.1*np.ones(20)))
-    Q_fit(datos['mu'],datos['tpulse'],saturation_poly,guess,sigmas,bounds)  
-    
+    Q_fit(datos['mu'],datos['tpulse'],saturation_poly,guess,sigmas,bounds)
+
 
     if plot==True:
         #plt.figure()
@@ -431,17 +431,17 @@ def QDC_fit_p(data, canal, tac, plot=False, guess=[0,0,0,0,0,0,0,0,0,0],axis=0):
 
 
 def QDC_inter_sp(data, canal, tac, plot=False, axis=0):
-   
+
     datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
 
     t_pulse = datos['tpulse'].to_numpy()
     mu      = datos['mu'].to_numpy()
     t_pulse = np.concatenate([t_pulse[1:7],t_pulse[7:16:2]])
     mu      = np.concatenate([mu[1:7],mu[7:16:2]])
-    
-   
+
+
     spl_conf = interpolate.splrep(t_pulse,mu,s=0)
-    
+
     spl_conf = spl_conf[1][1:11]
 
     if plot==True:
@@ -466,17 +466,17 @@ def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
     shift     = guess[1]
     offset    = guess[2]
     period    = 360
-    
+
     #Find gap
     datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
     sl_window = np.concatenate([np.diff(datos['mu']),[0]])
     phase_array = datos['phase']
-    
+
     #plt.figure()
     #phase_fine = datos['phase']
     #plt.errorbar(datos.phase,datos['mu'], datos['sigma'],
     #                 fmt='.',color='red',label="Data")
-    
+
     #Top slope points
     maxis = np.argwhere(sl_window > 100)
     #Check if next sample comes back to zero (phase gap) o has an equal but negative slope
@@ -486,25 +486,25 @@ def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
     except:
         salto = 359
     print("GAP",phase_array.to_numpy()[maxis[jump]])
-    
+
     shift_min = salto - 20 #datos['phase'].iloc[salto]-20
     shift_max = salto + 20 #datos['phase'].iloc[salto]+20
-    
+
     if shift_min < 0:
         shift_min = 0
     if shift_max > 359.5:
         shift_max = 359.5
-    
+
     shift = shift_min
-    
+
     # Now let's build a new dataframe with the right mu and sigma
-    
+
     indexes = datos.index
     for i in datos['phase']:
         index = indexes[datos['phase']==i]
         #print(datos.loc[index,'mu'].values)
         if salto < 30:
-            if ((i < salto) | (i > salto + 40.0)): 
+            if ((i < salto) | (i > salto + 40.0)):
                 if (datos.loc[index,'mu'].values > datos.loc[index,'mu2'].values):
                     datos.loc[index,'mu'] = datos.loc[index,'mu2']
                     datos.loc[index,'sigma'] = datos.loc[index,'sigma']
@@ -513,7 +513,7 @@ def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
                     datos.loc[index,'mu'] = datos.loc[index,'mu2']
                     datos.loc[index,'sigma'] = datos.loc[index,'sigma']
         elif salto > 330:
-            if ((i < salto) & (i > salto - 40.0)): 
+            if ((i < salto) & (i > salto - 40.0)):
                 if (datos.loc[index,'mu'].values > datos.loc[index,'mu2'].values):
                     datos.loc[index,'mu'] = datos.loc[index,'mu2']
                     datos.loc[index,'sigma'] = datos.loc[index,'sigma']
@@ -522,7 +522,7 @@ def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
                     datos.loc[index,'mu'] = datos.loc[index,'mu2']
                     datos.loc[index,'sigma'] = datos.loc[index,'sigma']
         else:
-            if i < salto: 
+            if i < salto:
                 if (datos.loc[index,'mu'].values > datos.loc[index,'mu2'].values):
                     datos.loc[index,'mu'] = datos.loc[index,'mu2']
                     datos.loc[index,'sigma'] = datos.loc[index,'sigma']
@@ -530,54 +530,54 @@ def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
                 if (datos.loc[index,'mu'].values < datos.loc[index,'mu2'].values):
                     datos.loc[index,'mu'] = datos.loc[index,'mu2']
                     datos.loc[index,'sigma'] = datos.loc[index,'sigma']
-    
-    
-                
+
+
+
     amplitude = (np.min(datos['mu']) - np.max(datos['mu']))/2.0
     offset    = np.min(datos['mu']) + np.abs(amplitude)
     bounds    = [[amplitude-20,shift_min,offset-20],[amplitude+20,shift_max,offset+20]]
-    
+
     # Sigmas for fit optimizing
     sigma_w = datos['sigma'].to_numpy()
     weight = np.ones(sigma_w.shape)
     min_pos = np.argmin(datos['mu'])
     max_pos = np.argmax(datos['mu'])
-    
+
     zone = 5
     extra = 8
-    
+
     if min_pos-zone > 0:
         weight[min_pos-zone:min_pos]=weight[min_pos-zone:min_pos]*extra
     else:
         weight[:min_pos]=weight[:min_pos]*extra
-        
+
     if max_pos+zone < len(sigma_w):
         weight[max_pos:max_pos+zone]=weight[max_pos:max_pos+zone]*extra
     else:
         weight[max_pos:]=weight[max_pos:]*extra
-        
+
     sigma_w = sigma_w*weight
-    
-    
+
+
     while((chisq_r > 2) & (shift < shift_max)):
-        
+
         Q_fit = fitting_nohist()
         coeff  = [amplitude,period,shift,offset]
-        
+
         Q_fit(datos['mu'],datos['phase'],sawtooth,[amplitude,shift,offset],sigma_w,bounds=bounds)
         chisq_r = Q_fit.chisq_r
-        
+
         if best_chi > chisq_r:
             best_chi = chisq_r
             best_shift = shift
-        
+
         shift = shift + 0.25
-    
+
     Q_fit(datos['mu'],datos['phase'],sawtooth,[amplitude,best_shift,offset],sigma_w,bounds=bounds)
     chisq_r = Q_fit.chisq_r
     print("Channel = %d / TAC = %d / CHISQR_r = %f" % (canal,tac,chisq_r))
-    
-        
+
+
     if plot==True:
         plt.figure()
         #phase_fine = datos['phase']
@@ -588,5 +588,5 @@ def TDC_fit(data, canal, tac, guess=[-82,0,280], plot=False):
         plt.xlabel("PHASE")
         plt.ylabel("TFINE")
         plt.legend()
-        
+
     return chisq_r, Q_fit.coeff
