@@ -17,8 +17,9 @@ def saturation(x,*param):
     sat   = param[1]
     shift = param[2]
     gain  = param[3]
+    offset = param[4]
     #offset = param[4]
-    value = gain*(1 + ((slope*(x-shift))/np.power(1+np.power((np.abs(slope*(x-shift))),sat),1./sat)))
+    value = gain*(1 + ((slope*(x-shift))/np.power(1+np.power((np.abs(slope*(x-shift))),sat),1./sat))) + offset
     return value
 
 def saturation_poly(x,*param):
@@ -41,8 +42,10 @@ def saturation_zero(x,*param):
     sat   = param[1]
     shift = param[2]
     gain  = param[3]
-    value = gain*((slope*x-shift)/np.power(1+np.power((np.abs(slope*x-shift)),sat),1./sat))
-    value[value<0]=np.zeros(len(value[value<0]))
+    offset = param[4]
+
+    value = gain*(1+(slope*(x-shift))/np.power(1+np.power((np.abs(slope*x-shift)),sat),1./sat)) + offset
+    value[value<offset]=np.zeros(len(value[value<0]))
     return value
 
 def Baseline_work(data, canal, thr, counter):
@@ -362,12 +365,13 @@ def Tn_fit(data, canal, thr, min_count=10, plot=False, axis=[],
     return t_solution,T_fit
 
 
-def QDC_fit(data, canal, tac, plot=False, guess=[1.78e-02,1.01e+01,9.21e+01,3.41e+02],axis=0):
+def QDC_fit(data, canal, tac, plot=False, guess=[0.05,12,90,300,100],axis=0):
     #Fitting QDC parameters
     slope = guess[0]
     sat   = guess[1]
     shift = guess[2]
     gain  = guess[3]
+    offset = guess[4]
 
     datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
 
@@ -376,7 +380,7 @@ def QDC_fit(data, canal, tac, plot=False, guess=[1.78e-02,1.01e+01,9.21e+01,3.41
 
     guess_a = np.array(guess)
 
-    Q_fit(datos['mu'],datos['tpulse'],saturation,[slope,sat,shift,gain],datos['sigma'],
+    Q_fit(datos['mu'],datos['tpulse'],saturation,[slope,sat,shift,gain,offset],datos['sigma'],
           bounds=[guess_a-guess_a/2,guess_a+guess_a/2])
     #chisq = np.sum(((datos.eval("mean")-Q_fit.evaluate(datos.length))/datos.sigma)**2)
     print("Channel = %d / Slope_Error = %f" % (canal,Q_fit.perr[0]/Q_fit.coeff[0]))
@@ -411,9 +415,8 @@ def QDC_fit_p(data, canal, tac, plot=False, guess=[0,0,0,0,0,0,0,0,0,0],axis=0):
     guess_a = np.array(guess)
     bounds = [[-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf],
                [ np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf]]
-    sigmas = np.concatenate((1*np.ones(4),
-                             0.05*np.ones(6),
-                             0.1*np.ones(20)))
+    #sigmas = np.ones(15)
+    sigmas = np.concatenate((np.ones(3),0.05*np.ones(9),np.ones(3)))
     Q_fit(datos['mu'],datos['tpulse'],saturation_poly,guess,sigmas,bounds)
 
 
@@ -426,7 +429,7 @@ def QDC_fit_p(data, canal, tac, plot=False, guess=[0,0,0,0,0,0,0,0,0,0],axis=0):
         #plt.ylabel("QFINE")
         #plt.legend()
 
-    return Q_fit.chisq_r, Q_fit
+    return Q_fit.coeff
 
 
 

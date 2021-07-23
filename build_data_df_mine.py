@@ -244,14 +244,18 @@ def inv_saturation_spline(x,*param):
     param_array = np.array(param)
     spline_conf = interpolate.BSpline([10,10,10,10,30,40,50,60,70,90,110,150,150,150,150],
                                       np.concatenate([[0],param_array,[0,0,0,0]]),3)
-    
+
     return interpolate.splev(x, spline_conf, der=0)
 
-   
-    
+
+def poly(x,*param):
+    return param[0]+param[1]*x+param[2]*(x**2)+param[3]*(x**3)+param[4]*(x**4)+param[5]*(x**5)+\
+                               param[6]*(x**6)+param[7]*(x**7)+param[8]*(x**8)+param[9]*(x**9)
+
+
 def apply_qdc_spl_correction(df, df_qdc):
     df = df.reset_index().merge(df_qdc[['tofpet_id', 'channel_id', 'tac_id', 'spl0', 'spl1', 'spl2', 'spl3', 'spl4', 'spl5', 'spl6', 'spl7', 'spl8', 'spl9']], on=['tofpet_id', 'channel_id', 'tac_id'])
-  
+
     df['efine_corrected'] = df['efine'] - df.apply(lambda data: inv_saturation_spline(
                                                                       data['intg_w'],data['spl0'],
                                                                       data['spl1'],data['spl2'],
@@ -259,8 +263,33 @@ def apply_qdc_spl_correction(df, df_qdc):
                                                                       data['spl5'],data['spl6'],
                                                                       data['spl7'],data['spl8'],
                                                                       data['spl9']),axis=1)
-    
+
     df.drop(columns=['spl0', 'spl1', 'spl2', 'spl3', 'spl4', 'spl5', 'spl6', 'spl7', 'spl8', 'spl9'], inplace=True)
+    df = df.sort_values('index').set_index('index')
+    df.index.name = None
+    return df
+
+
+def apply_qdc_poly_correction(df, df_qdc):
+    df = df.reset_index().merge(df_qdc[['tofpet_id', 'channel_id', 'tac_id',
+                                        'c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9']],
+                                on=['tofpet_id', 'channel_id', 'tac_id'])
+
+    df['efine_corrected'] = df['efine'] - df.apply(lambda data: poly( data['intg_w'],data['c0'],
+                                                                      data['c1'],data['c2'],
+                                                                      data['c3'],data['c4'],
+                                                                      data['c5'],data['c6'],
+                                                                      data['c7'],data['c8'],
+                                                                      data['c9']),axis=1)
+
+    df['correction'] = df.apply(lambda data: poly( data['intg_w'],data['c0'],
+                                                                      data['c1'],data['c2'],
+                                                                      data['c3'],data['c4'],
+                                                                      data['c5'],data['c6'],
+                                                                      data['c7'],data['c8'],
+                                                                      data['c9']),axis=1)
+
+    #df.drop(columns=['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'], inplace=True)
     df = df.sort_values('index').set_index('index')
     df.index.name = None
     return df
@@ -288,5 +317,3 @@ def apply_qdc_spl_correction(df, df_qdc):
 
 #files = get_files(run_number)
 #process_daq_file(files[0], outfile)
-
-
