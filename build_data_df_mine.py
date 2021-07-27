@@ -274,7 +274,8 @@ def apply_qdc_poly_correction(df, df_qdc):
     df = df.reset_index().merge(df_qdc[['tofpet_id', 'channel_id', 'tac_id',
                                         'c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9']],
                                 on=['tofpet_id', 'channel_id', 'tac_id'])
-
+    #import pdb
+    #pdb.set_trace()
     df['efine_corrected'] = df['efine'] - df.apply(lambda data: poly( data['intg_w'],data['c0'],
                                                                       data['c1'],data['c2'],
                                                                       data['c3'],data['c4'],
@@ -282,38 +283,14 @@ def apply_qdc_poly_correction(df, df_qdc):
                                                                       data['c7'],data['c8'],
                                                                       data['c9']),axis=1)
 
-    df['correction'] = df.apply(lambda data: poly( data['intg_w'],data['c0'],
-                                                                      data['c1'],data['c2'],
-                                                                      data['c3'],data['c4'],
-                                                                      data['c5'],data['c6'],
-                                                                      data['c7'],data['c8'],
-                                                                      data['c9']),axis=1)
+    # df['correction'] = df.apply(lambda data: poly( data['intg_w'],data['c0'],
+    #                                                                   data['c1'],data['c2'],
+    #                                                                   data['c3'],data['c4'],
+    #                                                                   data['c5'],data['c6'],
+    #                                                                   data['c7'],data['c8'],
+    #                                                                   data['c9']),axis=1)
 
-    #df.drop(columns=['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'], inplace=True)
+    df.drop(columns=['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'], inplace=True)
     df = df.sort_values('index').set_index('index')
     df.index.name = None
     return df
-
-
-# # Process file
-
-# In[24]:
-
-
-# QDC correction
-#df_qdc = pd.read_hdf('efine_cal_asic0.h5')
-#df_qdc = pd.read_hdf('asic0_efine_cal_spl.h5')
-
-
-# TDC correction
-#df_tdc = pd.read_hdf('asic0_tfine_cal.h5')
-
-#run_number = 10847 # 49V, lsb 57, Na-22
-
-#outfile = 'run_10847_0000_qdc_spl_20Jul.h5'
-
-
-# In[ ]:
-
-#files = get_files(run_number)
-#process_daq_file(files[0], outfile)

@@ -145,7 +145,7 @@ def apply_inv_sat_spline(dat):
 
 class fitting_nohist(object):
     # General Fitting call
-    def __call__(self, data, time, fit_func, guess, sigmas, bounds=[]):
+    def __call__(self, data, time, fit_func, guess, sigmas=[], bounds=[]):
         self.bins  = time
         self.data  = data
         self.fit_func = fit_func
@@ -173,6 +173,9 @@ class fitting_nohist(object):
                 print("Fitting Problems")
                 self.coeff = np.array(self.guess)
                 self.perr  = np.array(self.guess)
+
+        if not sigmas:
+            sigmas = np.ones(len(self.data))
 
         self.fit = self.fit_func(self.bins, *self.coeff)
         self.chisq = np.sum(((self.data-self.fit)/sigmas)**2)
@@ -405,7 +408,7 @@ def QDC_fit(data, canal, tac, plot=False, guess=[0.05,12,90,300,100],axis=0):
     return Q_fit.chisq_r, Q_fit, qoffset, max_slope
 
 
-def QDC_fit_p(data, canal, tac, plot=False, guess=[0,0,0,0,0,0,0,0,0,0],axis=0):
+def QDC_fit_p(data, canal, tac, plot=False, guess=[0,0,0,0,0,0,0,0,0,0],sigmas=[],axis=0):
     #Fitting QDC parameters
 
     datos = data[(data['tac_id']==tac)&(data['channel_id']==canal)]
@@ -415,9 +418,11 @@ def QDC_fit_p(data, canal, tac, plot=False, guess=[0,0,0,0,0,0,0,0,0,0],axis=0):
     guess_a = np.array(guess)
     bounds = [[-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf],
                [ np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf]]
-    #sigmas = np.ones(15)
-    sigmas = np.concatenate((np.ones(3),0.05*np.ones(9),np.ones(3)))
-    Q_fit(datos['mu'],datos['tpulse'],saturation_poly,guess,sigmas,bounds)
+
+    #if not np.any(sigmas):
+    #    sigmas = np.concatenate((np.ones(4),0.05*np.ones(14),np.ones(12)))
+
+    Q_fit(datos['mu'],datos['tpulse'],saturation_poly,guess)#,sigmas,bounds)
 
 
     if plot==True:
