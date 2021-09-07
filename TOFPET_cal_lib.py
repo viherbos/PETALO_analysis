@@ -17,8 +17,8 @@ def saturation(x,*param):
     sat   = param[1]
     shift = param[2]
     gain  = param[3]
-    offset = param[4]
     #offset = param[4]
+    offset = 0
     value = gain*(1 + ((slope*(x-shift))/np.power(1+np.power((np.abs(slope*(x-shift))),sat),1./sat))) + offset
     return value
 
@@ -174,7 +174,7 @@ class fitting_nohist(object):
                 self.coeff = np.array(self.guess)
                 self.perr  = np.array(self.guess)
 
-        if not sigmas:
+        if not sigmas.all():
             sigmas = np.ones(len(self.data))
 
         self.fit = self.fit_func(self.bins, *self.coeff)
@@ -287,7 +287,7 @@ def gauss_fit(data,bins,*p_param):
                         edgecolor='white', linewidth=0.5)
         p_param[1].set_xlabel(p_param[2])
         p_param[1].set_ylabel(p_param[3])
-        p_param[1].set_title(p_param[1])
+        p_param[1].set_title(p_param[4])
         p_param[1].plot(Q_gauss.bin_centers, Q_gauss.hist_fit, 'r--', linewidth=1)
         p_param[1].text(p_param[5][0],p_param[5][1], (('$\mu$=%0.3f (+/- %0.3f) \n'+\
                                      '$\sigma$=%0.3f (+/- %0.3f) \n'+
