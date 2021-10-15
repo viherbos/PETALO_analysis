@@ -138,6 +138,13 @@ def apply_inv_sat_spline(dat):
                                                                       data['spl7'],data['spl8'],
                                                                       data['spl9']),axis=1)
 
+def log_tot(x,*param):
+    
+    return param[0]+param[1]*np.log(x)
+
+def exp_tot(x,*param):
+    
+    return param[0]*np.exp(x/param[1])
 
 ###########################################################################################################
 
@@ -158,24 +165,24 @@ class fitting_nohist(object):
                                                     method='lm'
                                                     )
         else:
-            try:
-                self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
-                                                            self.data, p0=self.guess,
-                                                            ftol=1E-12, maxfev=10000,
-                                                            bounds=self.bounds,
-                                                            method='trf',
-                                                            sigma = sigmas
-                                                            )
+ #           try:
+            self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
+                                                        self.data, p0=self.guess,
+                                                        ftol=1E-12, maxfev=10000,
+                                                        bounds=self.bounds,
+                                                        method='trf',
+                                                        sigma = sigmas
+                                                        )
 
-                self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
+            self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
             # Error in parameter estimation
-            except:
-                print("Fitting Problems")
-                self.coeff = np.array(self.guess)
-                self.perr  = np.array(self.guess)
+#            except:
+#                print("Fitting Problems")
+#                self.coeff = np.array(self.guess)
+#                self.perr  = np.array(self.guess)
 
-        if not sigmas.all():
-            sigmas = np.ones(len(self.data))
+        #if not np.array(sigmas).all():
+        #    sigmas = np.ones(len(self.data))
 
         self.fit = self.fit_func(self.bins, *self.coeff)
         self.chisq = np.sum(((self.data-self.fit)/sigmas)**2)
@@ -194,7 +201,7 @@ class fitting_hist(object):
         self.data  = data
         self.fit_func = fit_func
         # Histogram
-        self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins)
+        self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins,density=True)
         self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
         #self.bounds = [self.guess-self.guess*0.5,self.guess+self.guess*0.5]
 
@@ -284,7 +291,7 @@ def gauss_fit(data,bins,*p_param):
         #p_param[5] -> pos [0.95,0.95,"left"]
 
         p_param[1].hist(data, bins, align='mid', facecolor='green',
-                        edgecolor='white', linewidth=0.5)
+                        edgecolor='white', linewidth=0.5,density=True)
         p_param[1].set_xlabel(p_param[2])
         p_param[1].set_ylabel(p_param[3])
         p_param[1].set_title(p_param[4])
@@ -332,7 +339,7 @@ def Tn_fit(data, canal, thr, min_count=10, plot=False, axis=[],
           np.zeros(len(datos['count']))+1.0,[[0,3,0,1E6],[4E6,15,63,10E6]])
 
     #chisq = np.sum(((datos['count']-T_fit.evaluate(datos['vth_t1']))/1.0)**2)
-    print("Channel = %d / CHISQR = %f" % (canal,T_fit.chisq_r))
+    #print("Channel = %d / CHISQR = %f" % (canal,T_fit.chisq_r))
 
     if plot==True:
         #plt.figure()
@@ -358,7 +365,7 @@ def Tn_fit(data, canal, thr, min_count=10, plot=False, axis=[],
 
     t_solution = -1
     i = int(np.floor(T_fit.coeff[2]))
-
+    
     while t_solution<0:
         if (datos_f[i] < min_count):
             t_solution = i
@@ -416,19 +423,17 @@ def QDC_fit_p(data, canal, tac, plot=False, guess=[0,0,0,0,0,0,0,0,0,0],sigmas=[
     Q_fit = fitting_nohist()
 
     guess_a = np.array(guess)
-    bounds = [[-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf],
-               [ np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf]]
+    #bounds = [[-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf,-np.Inf],
+    #           [ np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf, np.Inf]]
 
-    #if not np.any(sigmas):
-    #    sigmas = np.concatenate((np.ones(4),0.05*np.ones(14),np.ones(12)))
-
-    Q_fit(datos['mu'],datos['tpulse'],saturation_poly,guess)#,sigmas,bounds)
+    
+    Q_fit(datos['mu'],datos['intg_w'],saturation_poly,guess)#,sigmas,bounds)
 
 
     if plot==True:
         #plt.figure()
-        axis.plot(datos['tpulse'],Q_fit.evaluate(datos['tpulse']),'b-',label="Fit")
-        axis.errorbar(datos['tpulse'],datos['mu'], datos['sigma'],
+        axis.plot(datos['intg_w'],Q_fit.evaluate(datos['intg_w']),'b-',label="Fit")
+        axis.errorbar(datos['intg_w'],datos['mu'], datos['sigma'],
                      fmt='.',color='red',label="Data")
         #plt.xlabel("Length")
         #plt.ylabel("QFINE")
