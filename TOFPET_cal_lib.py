@@ -27,6 +27,16 @@ def saturation_poly(x,*param):
     return param[0]+param[1]*x+param[2]*(x**2)+param[3]*(x**3)+param[4]*(x**4)+param[5]*(x**5)+\
                                param[6]*(x**6)+param[7]*(x**7)+param[8]*(x**8)+param[9]*(x**9)
 
+def poly_5(x,*param): 
+    return param[0]+param[1]*x+param[2]*(x**2)+param[3]*(x**3)+param[4]*(x**4)+param[5]*(x**5)
+    
+def poly_13(x,*param): 
+
+    return param[0]+param[1]*x+param[2]*(x**2)+param[3]*(x**3)+param[4]*(x**4)+param[5]*(x**5)+\
+                               param[6]*(x**6)+param[7]*(x**7)+param[8]*(x**8)+param[9]*(x**9)+\
+                               param[10]*(x**10)+param[11]*(x**11)+param[12]*(x**12)+param[13]*(x**13)
+    
+    
 #def inv_saturation_spline(x,*param):
     #spline_conf = [np.array([10,10,10,10,30,40,50,60,70,90,110,150,150,150,150]),
     #              np.concatenate([[0],*param,[0,0,0,0]]),
@@ -140,14 +150,55 @@ def apply_inv_sat_spline(dat):
 
 def log_tot(x,*param):
     
-    return param[0]+param[1]*np.log(x)
+    return param[0]*(np.log(x+param[1]))
 
 def exp_tot(x,*param):
     
     return param[0]*np.exp(x/param[1])
 
+def sqroot_tot(x,*param):
+
+    return param[0]*np.sqrt(x*param[1])
+
+
+
 ###########################################################################################################
 
+class fitting_nohist_pe(object):
+    # General Fitting call
+    def __call__(self, data, time, fit_func, guess, sigmas=[], bounds=[]):
+        self.bins  = time
+        self.data  = data
+        self.fit_func = fit_func
+        self.guess  = guess
+        self.bounds = bounds
+
+        if not bounds:
+            self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
+                                                    self.data, p0=self.guess,
+                                                    method='lm'
+                                                    )
+        else:
+
+            self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bins,
+                                                        self.data, p0=self.guess,
+                                                        ftol=1E-12, maxfev=10000,
+                                                        bounds=self.bounds,
+                                                        method='trf',
+                                                        sigma = sigmas
+                                                        )
+
+            self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
+
+            
+        self.fit = self.fit_func(self.bins, *self.coeff)
+#       self.chisq = np.sum(((self.data-self.fit)/sigmas)**2)
+        self.df = len(self.bins)-len(self.coeff)
+#       self.chisq_r = self.chisq/self.df
+        #Gets fitted function and chisqr_r
+
+    def evaluate(self,in_data):
+        return self.fit_func(in_data,*self.coeff)
 
 
 class fitting_nohist(object):
@@ -193,15 +244,62 @@ class fitting_nohist(object):
     def evaluate(self,in_data):
         return self.fit_func(in_data,*self.coeff)
 
-
-class fitting_hist(object):
-    def __call__(self, data, bins, fit_func, guess):
+    
+class fitting_hist2(object):
+    def __call__(self, data, bins, fit_func, guess, range=None, range_fit=None):
         self.guess = np.array(guess)
         self.bins  = bins
         self.data  = data
         self.fit_func = fit_func
         # Histogram
-        self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins,density=True)
+        self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins, density=False, range=range)
+        self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
+   
+        # Fit selection
+        self.bin_centers_f = self.bin_centers[(self.bin_centers>range_fit[0]) & 
+                                              (self.bin_centers<range_fit[1])]
+        self.hist_f      = self.hist[(self.bin_centers>range_fit[0]) &
+                                              (self.bin_centers<range_fit[1])]
+        
+        # Fitting function call
+        try:
+            self.coeff, self.var_matrix = curve_fit(self.fit_func, self.bin_centers_f,
+                                                        self.hist_f, p0=guess,
+                                                        ftol=1E-12, maxfev=1000,
+                                                        #bounds = self.bounds,
+                                                        method='lm')
+            self.perr = np.sqrt(np.absolute(np.diag(self.var_matrix)))
+
+            # Error in parameter estimation
+        except:
+            print("Fitting Problems")
+            self.coeff = np.array(self.guess)
+            self.perr  = np.array(self.guess)
+
+
+        self.hist_fit_f = self.fit_func(self.bin_centers_f, *self.coeff)
+        if np.isnan(self.hist_fit_f).any():
+            self.chisq_r = 1000
+        else:
+            self.chisq = np.sum((((self.hist_f-self.hist_fit_f)**2)/self.hist_fit_f))
+            self.df = len(self.bin_centers_f)-len(self.coeff)
+            self.chisq_r = self.chisq/self.df
+
+        #Gets fitted function and residues
+
+    def evaluate(self,in_data):
+        return self.fit_func(in_data,*self.coeff)
+
+    
+    
+class fitting_hist(object):
+    def __call__(self, data, bins, fit_func, guess, range=None, range_fit=None):
+        self.guess = np.array(guess)
+        self.bins  = bins
+        self.data  = data
+        self.fit_func = fit_func
+        # Histogram
+        self.hist, self.bin_edges = np.histogram(self.data, bins=self.bins,density=True, range=range)
         self.bin_centers = (self.bin_edges[:-1] + self.bin_edges[1:])/2
         #self.bounds = [self.guess-self.guess*0.5,self.guess+self.guess*0.5]
 
@@ -281,7 +379,8 @@ def gauss_fit(data,bins,*p_param):
     Q_gauss(data=data,
             bins=bins,
             guess=p0,
-            fit_func=gauss)
+            fit_func=gauss,
+            range = p_param[6])
 
     if p_param[0]==True:
         #p_param[1] -> axis
@@ -291,11 +390,11 @@ def gauss_fit(data,bins,*p_param):
         #p_param[5] -> pos [0.95,0.95,"left"]
 
         p_param[1].hist(data, bins, align='mid', facecolor='green',
-                        edgecolor='white', linewidth=0.5,density=True)
+                        edgecolor='white', linewidth=0.5,density=True,range=p_param[6])
+        p_param[1].plot(Q_gauss.bin_centers, Q_gauss.hist_fit, 'r--', linewidth=1)
         p_param[1].set_xlabel(p_param[2])
         p_param[1].set_ylabel(p_param[3])
         p_param[1].set_title(p_param[4])
-        p_param[1].plot(Q_gauss.bin_centers, Q_gauss.hist_fit, 'r--', linewidth=1)
         p_param[1].text(p_param[5][0],p_param[5][1], (('$\mu$=%0.3f (+/- %0.3f) \n'+\
                                      '$\sigma$=%0.3f (+/- %0.3f) \n'+
                                      'FWHM=%0.3f (+/- %0.3f) \n'+\
@@ -315,6 +414,55 @@ def gauss_fit(data,bins,*p_param):
                                          transform=p_param[1].transAxes)
 
     return Q_gauss.coeff,Q_gauss.perr,Q_gauss.chisq_r
+
+
+
+def gauss_fit2(data,bins,*p_param):
+    gauss1 = gauss
+    
+    Q_gauss = fitting_hist2()
+    Q_gauss(data=data,
+            bins=bins,
+            guess=p_param[8],
+            fit_func=gauss,
+            range = p_param[6],
+            range_fit = p_param[7] )
+
+    if p_param[0]==True:
+        #p_param[1] -> axis
+        #p_param[2] -> title
+        #p_param[3] -> xlabel
+        #p_param[4] -> ylabel
+        #p_param[5] -> pos [0.95,0.95,"left"]
+
+        p_param[1].hist(data, bins, align='mid', facecolor='green',
+                        edgecolor='white', linewidth=0.5,density=False,range=p_param[6])
+        #p_param[1].bar(Q_gauss.bin_centers_f,Q_gauss.hist_f)
+        p_param[1].plot(Q_gauss.bin_centers, Q_gauss.evaluate(Q_gauss.bin_centers), 'r--', linewidth=1)
+        
+        p_param[1].set_xlabel(p_param[2])
+        p_param[1].set_ylabel(p_param[3])
+        p_param[1].set_title(p_param[4])
+        p_param[1].text(p_param[5][0],p_param[5][1], (('$\mu$=%0.3f (+/- %0.3f) \n'+\
+                                     '$\sigma$=%0.3f (+/- %0.3f) \n'+
+                                     'FWHM=%0.3f (+/- %0.3f) \n'+\
+                                     'Res=%0.3f%% (+/- %0.3f)') % \
+                                        (Q_gauss.coeff[1] , Q_gauss.perr[1],
+                                         np.absolute(Q_gauss.coeff[2]) , Q_gauss.perr[2],
+                                         2.35*np.absolute(Q_gauss.coeff[2]),
+                                         2.35*np.absolute(Q_gauss.perr[2]),
+                                         2.35*np.absolute(Q_gauss.coeff[2])*100/Q_gauss.coeff[1],
+                                         2.35*np.absolute(Q_gauss.coeff[2])*100/Q_gauss.coeff[1]*
+                                         np.sqrt((Q_gauss.perr[2]/Q_gauss.coeff[2])**2+
+                                                 (Q_gauss.perr[1]/Q_gauss.coeff[1])**2))
+                                      ),
+                                         fontsize=8,
+                                         verticalalignment='top',
+                                         horizontalalignment=p_param[5][2],
+                                         transform=p_param[1].transAxes)
+
+    return Q_gauss.coeff,Q_gauss.perr,Q_gauss.chisq_r
+
 
 
 def Tn_fit(data, canal, thr, min_count=10, plot=False, axis=[],
