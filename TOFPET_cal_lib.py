@@ -130,6 +130,9 @@ def semigauss(x, *param):
     return gain * 2 / w * pdf * cdf
 
 
+def moyal(x, a, mu, sigma):
+    return a*np.exp(-((x-mu)/sigma + np.exp(-(x-mu)/sigma))/2)/(np.sqrt(2*np.pi)*sigma)
+
 
 def inv_saturation_spline(x,*param):
     #param_array = np.array(param)
@@ -289,7 +292,9 @@ class fitting_hist2(object):
 
     def evaluate(self,in_data):
         return self.fit_func(in_data,*self.coeff)
-
+    
+    def evaluate_f(self):
+        return self.fit_func(self.bin_centers_f,*self.coeff)
     
     
 class fitting_hist(object):
@@ -458,6 +463,75 @@ def gauss_fit2(data,bins,*p_param):
                                       ),
                                          fontsize=8,
                                          verticalalignment='top',
+                                         horizontalalignment=p_param[5][2],
+                                         transform=p_param[1].transAxes)
+
+    return Q_gauss.coeff,Q_gauss.perr,Q_gauss.chisq_r
+
+
+def semigauss_fit2(data,bins,*p_param):
+    
+    Q_gauss = fitting_hist2()
+    Q_gauss(data=data,
+            bins=bins,
+            guess=p_param[8],
+            fit_func=moyal,
+            range = p_param[6],
+            range_fit = p_param[7] )
+
+    if p_param[0]==True:
+        #p_param[1] -> axis
+        #p_param[2] -> title
+        #p_param[3] -> xlabel
+        #p_param[4] -> ylabel
+        #p_param[5] -> pos [0.95,0.95,"left"]
+
+        p_param[1].hist(data, bins, align='mid', facecolor='green',
+                        edgecolor='white', linewidth=0.5,density=False,range=p_param[6])
+        p_param[1].plot(Q_gauss.bin_centers_f, Q_gauss.evaluate_f(), 'r--', linewidth=1)
+        
+        #e        = Q_gauss.coeff[0]
+        #e_err    = Q_gauss.perr[0]
+        #w        = Q_gauss.coeff[1]
+        #w_err    = Q_gauss.perr[1]
+        #a        = Q_gauss.coeff[2]
+        #a_err    = Q_gauss.perr[2]
+        #gain     = Q_gauss.coeff[3]
+        #gain_err = Q_gauss.perr[3]
+        
+        #sigma    = a/np.sqrt(1+a**2)
+        #mean     = e + w*sigma*np.sqrt(2/np.pi)
+        #mu_z = np.sqrt(2/np.pi)*sigma
+        #r_s  = np.sqrt(1-mu_z**2)
+        
+        #skew = ((4-np.pi)/2) * ((sigma*np.sqrt(2/np.pi))**3 / (1-2*(sigma**2)/np.pi)**1.5)
+        #m0   = mu_z - skew * r_s/2 - np.sign(a)/2 * np.exp(-(2*np.pi)/np.abs(a))
+        #mode     = e + w*m0
+              
+        #dsigma_err_da = (1/np.sqrt(1+a**2))-((2*a**2)/(1+a**2)**1.5)
+        #print("dsigma_err_da ",dsigma_err_da)
+        #sigma_err = np.sqrt(dsigma_err_da**2 * a_err**2)
+        #print("sigma_err ",sigma_err)
+        
+        #sigma_true         = w * np.sqrt(1-2*sigma**2/np.pi)
+        #dsigma_true_da = (-2*w/np.pi) / np.sqrt(1-2*sigma**2/np.pi) * (2*a*(1+a**2)-4*a**3)/(1+a**2)**2
+        #print("dsigma_true_dsigma ",dsigma_true_da)
+        
+        #dsigma_true_dw     = np.sqrt(1-2*sigma**2/np.pi)
+        #print("dsigma_true_dw ",dsigma_true_dw)
+        
+        #sigma_true_err     = np.sqrt(   w_err**2 * dsigma_true_dw**2 + 
+        #                                a_err**2 * (dsigma_true_da)**2 )
+              
+        
+        p_param[1].set_xlabel(p_param[2])
+        p_param[1].set_ylabel(p_param[3])
+        p_param[1].set_title(p_param[4])
+        
+        text_chain = ("$\mu$=%0.3f (+/- %0.3f) \n $\sigma$=%0.3f (+/- %0.3f) \n" % 
+                             (Q_gauss.coeff[1], Q_gauss.perr[1], Q_gauss.coeff[2], Q_gauss.perr[2]))
+        
+        p_param[1].text(p_param[5][0],p_param[5][1], text_chain, fontsize=8, verticalalignment='top',
                                          horizontalalignment=p_param[5][2],
                                          transform=p_param[1].transAxes)
 
